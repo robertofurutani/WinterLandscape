@@ -3,6 +3,7 @@ display.setDefault( "anchorX", 0.0 )
 display.setDefault( "anchorY", 0.0 )
 
 --Funcoes de transição
+--
 local function transFade (item, delay, tempo )
 	item.alpha=0
 	transition.to( item, {delay=delay, time=tempo, alpha=1, transition=easing.inOutQuad })
