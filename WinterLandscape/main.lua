@@ -1,3 +1,6 @@
+require("efeitos")
+require("classes")
+
 --Muda Anchor para Top Left
 display.setDefault( "anchorX", 0.0 )
 display.setDefault( "anchorY", 0.0 )
@@ -7,6 +10,9 @@ display.setDefault( "anchorY", 0.0 )
 bg = display.newGroup()
 botoesLayers = display.newGroup()
 bgTabuleiro = display.newGroup()
+bgCredito = display.newGroup()
+bgComoJogar = display.newGroup()
+
 
 -- Funcao que torna o botao vermelho ao touch
 local function tintRed (evento)
@@ -24,21 +30,14 @@ local function tintRed (evento)
 	end
 end
 
---Funcoes de transição
---
-function transFade (item, delay, tempo )
-	 item.alpha=0
-	 transition.to( item, {delay=delay, time=tempo, alpha=1, transition=easing.inOutQuad })
-end
-
-function transFade (item, delay, tempo, funcOnComplete )
-	 item.alpha=0
-	 transition.to( item, {delay=delay, time=tempo, alpha=1, transition=easing.inOutQuad, onComplete=funcOnComplete })
-end
-
 
 --BG  do Menu
 function mostrarMenu()
+	 bgCredito.alpha = 0
+	 bgComoJogar.alpha = 0
+	 bgTabuleiro.alpha = 0
+	 bg.alpha = 1
+	 botoesLayers.alpha = 1
 
 	 background = display.newImageRect( bg,"bg.png", 1024, 768)
 	
@@ -108,43 +107,79 @@ end
 
 --Funcoes dos Botões
 function tapBotao1p()
+	esconderMenu()
 	mostrarTabuleiro()
 end
 
-local function tapBotao2p ()
+function tapBotao2p ()
   print ("Botao 2 pressionado")
 end
 
-local function tapBotao3p ()
+function tapBotao3p ()
 print ("Botao 3 pressionado")
 end
 
-local function tapBotao4p ()
+function tapBotao4p ()
 print ("Botao 4 pressionado")
 end
 
-local function tapBotao5p ()
+function tapBotao5p ()
 print ("Botao 5 pressionado")
 end
 
-local function tapBotaoComo ()
-print ("Botao Como pressionado")
+function tapBotaoComo ()
+	mostrarComoJogar()
 end
 
-local function tapBotaoCredito ()
-print ("Botao Credito pressionado")
+function tapBotaoCredito ()
+ 	mostrarCreditos()
 end
 
-function removeMenu()
-	display.remove(bg)
-    display.remove(botoesLayers)
+function esconderMenu()
+	bg.alpha = 0
+	botoesLayers.alpha = 0
 end
 
 function mostrarTabuleiro()
+    bgTabuleiro.alpha = 1
 
 	local tabuleiro = display.newImageRect( bgTabuleiro,"tabuleiro_fundo.jpg", 1024, 768)
-	transFade( tabuleiro, 0, 1000, removeMenu)
+	transFade( tabuleiro, 0, 1000, esconderMenu)
 	
 end
+
+
+function mostrarComoJogar()
+	
+    bgComoJogar.alpha = 1
+	local imgComoJogar = display.newImageRect( bgComoJogar,"comojogar.png", 1024, 768)
+	local btVoltar = display.newImageRect(bgComoJogar, "voltar.jpg", 100, 200 )
+	btVoltar.x = 900
+	btVoltar.y = 300
+	
+	btVoltar.id = "btVoltar"
+	transFade( imgComoJogar, 0, 500, esconderMenu)
+	transFade( btVoltar, 0, 500)
+	print("mostrarComoJogar")
+	btVoltar:addEventListener( "touch", mostrarMenu)
+	
+end
+
+function mostrarCreditos()
+
+	bgCredito.alpha = 1
+	local imgCreditos = display.newImageRect( bgCredito,"creditos.png", 1024, 768)
+	local btVoltar = display.newImageRect(bgCredito, "voltar.jpg", 100, 200 )
+	btVoltar.x = 900
+	btVoltar.y = 300
+	
+	btVoltar.id = "btVoltar"
+	transFade( imgCreditos, 0, 500, esconderMenu)
+	transFade( btVoltar, 0, 500)
+	
+	btVoltar:addEventListener( "touch", mostrarMenu)
+	
+end
+
 
 mostrarMenu()
