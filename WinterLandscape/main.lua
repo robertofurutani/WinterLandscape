@@ -1,5 +1,6 @@
 require("efeitos")
 require("classes")
+require("game")
 
 --Muda Anchor para Top Left
 display.setDefault( "anchorX", 0.0 )
@@ -10,6 +11,7 @@ display.setDefault( "anchorY", 0.0 )
 bg = display.newGroup()
 botoesLayers = display.newGroup()
 bgTabuleiro = display.newGroup()
+playersHUDLayer = display.newGroup()
 bgCredito = display.newGroup()
 bgComoJogar = display.newGroup()
 
@@ -145,7 +147,7 @@ function mostrarTabuleiro()
 
 	local tabuleiro = display.newImageRect( bgTabuleiro,"tabuleiro_fundo.jpg", 1024, 768)
 	transFade( tabuleiro, 0, 1000, esconderMenu)
-	
+	initializeGame()
 end
 
 
