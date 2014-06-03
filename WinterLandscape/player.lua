@@ -28,7 +28,7 @@ function Player:moveConsumingResources(double)
 end
 
 -- Returns an array with half of birds and fish (counting as total points).
--- Round up. Doesn't decrease form this object.
+-- Round up. Doesn't decrease from this object.
 function Player:getHalfBirdsAndFish()
 	local stolenBirds=0
 	local stolenFish=0
@@ -39,6 +39,8 @@ function Player:getHalfBirdsAndFish()
 		elseif (stolenFish*2+stolenBirds)*2==totalSelfPoints-1 then
 			if stolenBirds < self.birds then
 				stolenBirds = stolenBirds+1
+			elseif stolenFish < self.fish then
+				stolenFish = stolenFish+1
 			end
 			break
 		end
