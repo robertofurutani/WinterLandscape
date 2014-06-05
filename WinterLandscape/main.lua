@@ -145,7 +145,8 @@ end
 function mostrarTabuleiro()
     bgTabuleiro.alpha = 1
 
-	local tabuleiro = display.newImageRect( bgTabuleiro,"tabuleiro_fundo.jpg", 1024, 768)
+	local tabuleiro = display.newImageRect( bgTabuleiro,"placeholder.jpg", 1024, 768)
+	--local tabuleiro = display.newImageRect( bgTabuleiro,"tabuleiro_fundo.jpg", 1024, 768)
 	transFade( tabuleiro, 0, 1000, esconderMenu)
 	initializeGame()
 end
