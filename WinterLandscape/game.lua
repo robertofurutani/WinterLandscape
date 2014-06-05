@@ -1,6 +1,5 @@
 require("player")
 
-local MAXPLAYERNUMBER = 5
 local DISTANCEGOAL = 20
 
 local CARTA_CACADOR=1
@@ -20,6 +19,7 @@ mainHUDBars={}
 mainHUDText=nil
 passButton=nil
 deadIcon=nil
+board=nil
 
 -- Steps
 STEP_SELECTCARD=1
@@ -29,182 +29,145 @@ STEP_MOVE=4
 STEP_NEWORDER=5
 
 -- Others
+playerCount = 0
 players = {}
 firstPlayer=0
 playerTurn=0
 step=0
-turnNumber=0 -- Test purposes
+gameOccurring=false
+turnNumber=0
 
-function initializeGame()
+--------------------------------------------------
+--- Initialize/Finalize functions
+--------------------------------------------------
+
+function initializeGame(functionAfterFade)
+	playerCount = 5
+	
 	-- Initialize player objects
-	for i = 1, MAXPLAYERNUMBER do
+	for i = 1, playerCount do
 		players[i]=Player.create(i)
 	end
 	
-	-- Technically this button is only for the moveStep and actionStep
+	playersHUDLayer=display.newGroup()
+	board = display.newImageRect(bgTabuleiro,"placeholder.jpg", 1024, 768)
+	-- board = display.newImageRect( bgboard,"board_fundo.jpg", 1024, 768)
+	
+	-- Technically this button is only for the moveStep
 	passButton = display.newImageRect( playersHUDLayer, "botao5p.png", 53, 55 )
 	passButton.x = 825
 	passButton.y = 20
-	transFade (passButton, 0, 1000)
-	passButton.id = "passButton"
 	passButton:addEventListener( "touch", passTouch)
 	
 	-- Main HUD
-	mainHUDText = display.newText({text="",font=native.systemFont, fontSize=32})
-	mainHUDText.x = 100
-	mainHUDText.y = 730
+	mainHUDText = display.newText({parent=playersHUDLayer, x=100, y=730, text="",font=native.systemFont, fontSize=32})
 	mainHUDText:setFillColor(0,0,0) 
-	transFade (mainHUDText, 0, 1000)
 	local mainHUDBarsPaths = {"barraYellow.png","barraBlue.png","barraPink.png","barraRed.png","barraGreen.png"}
-	for i = 1, MAXPLAYERNUMBER do -- Draw all bar at the same positions, but only the right one will be visible
+	for i = 1, playerCount do -- Draw all bar at the same positions, but only the right one will be visible
 		mainHUDBars[i] = display.newImageRect( playersHUDLayer, mainHUDBarsPaths[i], 760, 1024 )
 		mainHUDBars[i].x = 10
 		mainHUDBars[i].y = 0
 		mainHUDBars.isVisible = false
-		transFade (mainHUDBars[i], 0, 1000)
 	end
 	
-	-- Birds/Fish counter
-	for i = 1, MAXPLAYERNUMBER do
-		playersHUDBirds[i] = display.newText({text="0",font=native.systemFont, fontSize=16})
-		playersHUDFish[i] = display.newText({text="0",font=native.systemFont, fontSize=16})
+	for i = 1, playerCount do
+		-- Birds counter
+		playersHUDBirds[i] = display.newText({parent=playersHUDLayer, text="0",font=native.systemFont, fontSize=16})
 		playersHUDBirds[i]:setFillColor(0,0,0) 
-		playersHUDFish[i]:setFillColor(0,0,0) 
-		transFade (playersHUDBirds[i], 0, 1000)
-		transFade (playersHUDFish[i], 0, 1000)
-	end
-	playersHUDBirds[1].x = 125
-	playersHUDBirds[1].y = 300
-	playersHUDBirds[2].x = 225
-	playersHUDBirds[2].y = 300
-	playersHUDBirds[3].x = 325
-	playersHUDBirds[3].y = 300
-	playersHUDBirds[4].x = 425
-	playersHUDBirds[4].y = 300
-	playersHUDBirds[5].x = 525
-	playersHUDBirds[5].y = 300
-	playersHUDFish[1].x = 150
-	playersHUDFish[1].y = 300
-	playersHUDFish[2].x = 250
-	playersHUDFish[2].y = 300
-	playersHUDFish[3].x = 350
-	playersHUDFish[3].y = 300
-	playersHUDFish[4].x = 450
-	playersHUDFish[4].y = 300
-	playersHUDFish[5].x = 550
-	playersHUDFish[5].y = 300
-	
-	-- Players HUD
-	playersHUD[1] = display.newImageRect( playersHUDLayer, "botao1p.png", 53, 55 )
-	playersHUD[1].x = 125
-	playersHUD[1].y = 200
-	transFade (playersHUD[1], 0, 1000)
-	playersHUD[1].id = "playersHUD1"
-	playersHUD[1]:addEventListener( "touch", playerTouch)
-	
-	playersHUD[2] = display.newImageRect( playersHUDLayer, "botao2p.png", 53, 55 )
-	playersHUD[2].x = 225
-	playersHUD[2].y = 200
-	transFade (playersHUD[2], 0, 1000)
-	playersHUD[2].id = "playersHUD2"
-	playersHUD[2]:addEventListener( "touch", playerTouch)
-	
-	playersHUD[3] = display.newImageRect( playersHUDLayer, "botao3p.png", 53, 55 )
-	playersHUD[3].x = 325
-	playersHUD[3].y = 200
-	transFade (playersHUD[3], 0, 1000)
-	playersHUD[3].id = "playersHUD3"
-	playersHUD[3]:addEventListener( "touch", playerTouch)
-	
-	playersHUD[4] = display.newImageRect( playersHUDLayer, "botao4p.png", 53, 55 )
-	playersHUD[4].x = 425
-	playersHUD[4].y = 200
-	transFade (playersHUD[4], 0, 1000)
-	playersHUD[4].id = "playersHUD4"
-	playersHUD[4]:addEventListener( "touch", playerTouch)
-	
-	playersHUD[5] = display.newImageRect( playersHUDLayer, "botao5p.png", 53, 55 )
-	playersHUD[5].x = 525
-	playersHUD[5].y = 200
-	transFade (playersHUD[5], 0, 1000)
-	playersHUD[5].id = "playersHUD5"
-	playersHUD[5]:addEventListener( "touch", playerTouch)
-	
-	-- Players Icon
-	playersIcons[1] = display.newImageRect( playersHUDLayer, "playerYellow.png", 19, 35 )
-	playersIcons[1].x = 125
-	transFade (playersIcons[1], 0, 1000)
-	playersIcons[1].id = "playersIcons1"
-	
-	playersIcons[2] = display.newImageRect( playersHUDLayer, "playerBlue.png", 19, 35 )
-	playersIcons[2].x = 225
-	transFade (playersIcons[2], 0, 1000)
-	playersIcons[2].id = "playersIcons2"
-	
-	playersIcons[3] = display.newImageRect( playersHUDLayer, "playerPink.png", 19, 35 )
-	playersIcons[3].x = 325
-	transFade (playersIcons[3], 0, 1000)
-	playersIcons[3].id = "playersIcons3"
-	
-	playersIcons[4] = display.newImageRect( playersHUDLayer, "playerRed.png", 19, 35 )
-	playersIcons[4].x = 425
-	transFade (playersIcons[4], 0, 1000)
-	playersIcons[4].id = "playersIcons4"
-	
-	playersIcons[5] = display.newImageRect( playersHUDLayer, "playerGreen.png", 19, 35 )
-	playersIcons[5].x = 525
-	transFade (playersIcons[5], 0, 1000)
-	playersIcons[5].id = "playersIcons5"
-	
-	for i = 1, MAXPLAYERNUMBER do -- define icon y
-		positionPlayerIcon(i)
+		playersHUDBirds[i].x = ({125, 225, 325, 425, 525})[i]
+		playersHUDBirds[i].y = ({300, 300, 300, 300, 300})[i]
+		
+		-- Fish counter
+		playersHUDFish[i] = display.newText({parent=playersHUDLayer, text="0",font=native.systemFont, fontSize=16})
+		playersHUDFish[i]:setFillColor(0,0,0)
+		playersHUDFish[i].x = ({150, 250, 350, 450, 550})[i]
+		playersHUDFish[i].y = ({300, 300, 300, 300, 300})[i]
+		
+		-- Player HUD
+		local playersHUDPath = ({"botao1p.png","botao2p.png","botao3p.png","botao4p.png","botao5p.png"})[i]
+		playersHUD[i] = display.newImageRect( playersHUDLayer, playersHUDPath, 53, 55 )
+		playersHUD[i].x = ({125, 225, 325, 425, 525})[i]
+		playersHUD[i].y = ({200, 200, 200, 200, 200})[i]
+		playersHUD[i]:addEventListener( "touch", playerTouch)
+		
+		-- Players Icons
+		local playersIconsPath = ({"playerYellow.png","playerBlue.png","playerPink.png","playerRed.png","playerGreen.png"})[i] 
+		playersIcons[i] = display.newImageRect( playersHUDLayer, playersIconsPath, 19, 35 )
+		playersIcons[i].x = ({125, 225, 325, 425, 525})[i]
+		positionPlayerIcon(i) -- define icon y
 	end
 	
 	-- Cards image
-	cards[CARTA_CACADOR] = display.newImageRect( playersHUDLayer, "cartaCacadorFrente.png", 142, 190 )
-	transFade (cards[CARTA_CACADOR], 0, 1000)
-	cards[CARTA_CACADOR].id = "cartaCacador"
-	cards[CARTA_CACADOR]:addEventListener( "touch", cardTouch)
-	positionNonPlayerCard(CARTA_CACADOR)
-	
-	cards[CARTA_PESCADOR] = display.newImageRect( playersHUDLayer, "cartaPescadorFrente.png", 142, 190 )
-	transFade (cards[CARTA_PESCADOR], 0, 1000)
-	cards[CARTA_PESCADOR].id = "cartaPescador"
-	cards[CARTA_PESCADOR]:addEventListener( "touch", cardTouch)
-	positionNonPlayerCard(CARTA_PESCADOR)
-	
-	cards[CARTA_PATINADOR] = display.newImageRect( playersHUDLayer, "cartaPatinadorFrente.png", 142, 190 )
-	transFade (cards[CARTA_PATINADOR], 0, 1000)
-	cards[CARTA_PATINADOR].id = "cartaPatinador"
-	cards[CARTA_PATINADOR]:addEventListener( "touch", cardTouch)
-	positionNonPlayerCard(CARTA_PATINADOR)
-	
-	cards[CARTA_DIABO] = display.newImageRect( playersHUDLayer, "cartaDiaboFrente.png", 142, 190 )
-	transFade (cards[CARTA_DIABO], 0, 1000)
-	cards[CARTA_DIABO].id = "cartaDiabo"
-	cards[CARTA_DIABO]:addEventListener( "touch", cardTouch)
-	positionNonPlayerCard(CARTA_DIABO)
-	
-	cards[CARTA_CORVO] = display.newImageRect( playersHUDLayer, "cartaCorvoFrente.png", 142, 190 )
-	transFade (cards[CARTA_CORVO], 0, 1000)
-	cards[CARTA_CORVO].id = "cartaCorvo"
-	cards[CARTA_CORVO]:addEventListener( "touch", cardTouch)
-	positionNonPlayerCard(CARTA_CORVO)
-	
-	cards[CARTA_LADRAO] = display.newImageRect( playersHUDLayer, "cartaLadraoFrente.png", 142, 190 )
-	transFade (cards[CARTA_LADRAO], 0, 1000)
-	cards[CARTA_LADRAO].id = "cartaLadrao"
-	cards[CARTA_LADRAO]:addEventListener( "touch", cardTouch)
-	positionNonPlayerCard(CARTA_LADRAO)
+	for _,cardIndex in ipairs({CARTA_CACADOR,CARTA_PESCADOR,CARTA_PATINADOR,CARTA_DIABO,CARTA_CORVO,CARTA_LADRAO}) do
+		local cardPath = ({
+			[CARTA_CACADOR]="cartaCacadorFrente.png",
+			[CARTA_PESCADOR]="cartaPescadorFrente.png",
+			[CARTA_PATINADOR]="cartaPatinadorFrente.png",
+			[CARTA_DIABO]="cartaDiaboFrente.png",
+			[CARTA_CORVO]="cartaCorvoFrente.png",
+			[CARTA_LADRAO]="cartaLadraoFrente.png",
+		})[cardIndex] 
+		cards[cardIndex] = display.newImageRect( playersHUDLayer, cardPath, 142, 190 )
+		cards[cardIndex]:addEventListener( "touch", cardTouch)
+		positionNonPlayerCard(cardIndex)
+	end
 	
 	-- Dead Icon
 	deadIcon = display.newImageRect( playersHUDLayer, "botaoRecusar.png", 193, 193 )
 	deadIcon.isVisible = false
-	transFade (deadIcon, 0, 1000)
 	
+	transFade( playersHUDLayer, 0, 3000, functionAfterFade)
+	
+	gameOccurring=true
 	firstPlayer=math.random(5)
 	nextTurn()
 end
+
+-- Remove all images, restart the layer and going back to the menu screen
+function finalizeGame()
+	print("finalizeGame")
+	board=nil
+	passButton=nil
+	mainHUDText=nil
+	playersHUDBirds={}
+	playersHUDFish={}
+	playersHUD={}
+	playersIcons={}
+	cards={}
+	playersHUDLayer:removeSelf()
+	playersHUDLayer=nil
+	
+	playerCount = 0
+	players = {}
+	firstPlayer=0
+	playerTurn=0
+	step=0
+	turnNumber=0
+	gameOccurring=false
+end
+
+
+function declareVictory(playerIndex)
+	finalizeGame()
+	victoryLayer = display.newGroup()
+	local victoryScreen = display.newImageRect( victoryLayer, "victoryscreen.jpg", 1024, 768 )
+	local text = "Vitória do jogador "..playerIndex.."!"
+	local victoryText = display.newText({parent=victoryLayer, x=100, y=730, text=text,font=native.systemFont, fontSize=32})
+	victoryText:setFillColor(0,0,0) 
+	
+	local restart = function() 
+		if victoryLayer then
+			victoryLayer:removeSelf()
+			victoryLayer=nil
+		end
+		mostrarMenu()
+	end
+	transFade (victoryLayer, 0, 1000,function() victoryLayer:addEventListener( "touch",restart); end)
+end
+
+--------------------------------------------------
+--- Other functions
+--------------------------------------------------
 
 function nextTurn()
 	-- TODO animation for next turn
@@ -212,7 +175,7 @@ function nextTurn()
 	turnNumber=turnNumber+1
 	print("turnNumber="..turnNumber)
 	-- Remove the card and revives everyone
-	for i = 1, MAXPLAYERNUMBER do
+	for i = 1, playerCount do
 		removePlayerCard(i)
 		if players[i].dead then revivePlayer(i) end
 	end
@@ -222,7 +185,7 @@ end
 
 -- If a player have the right card, he call kill someone. Else go to the next step. Return if there is a killer among us
 function killChoice()
-	for i = 1, MAXPLAYERNUMBER do
+	for i = 1, playerCount do
 		if players[i].card==CARTA_DIABO then
 			step = STEP_KILLER
 			playerTurn=i
@@ -233,28 +196,42 @@ function killChoice()
 		end
 	end
 	initializeActionTurn()
-	highlightPlayer(playerTurn)
 end
 
 function initializeActionTurn()
 	-- Give bird to everyone
-	for i = 1, MAXPLAYERNUMBER do
-		birdsReceived = players[i].card==CARTA_CACADOR and 2 or 1 
+	for i = 1, playerCount do
+		birdsReceived = (players[i].card==CARTA_CACADOR and not players[i].dead) and 2 or 1 
 		setPlayerBirds(i,players[i].birds+birdsReceived)
 	end
 	print("Resource gain step (birds)")
 	--TODO animation
 	step = STEP_ACTION
 	print("actionStep STARTED")
+	nextAction(true)
 end
 
-function nextAction()
-	print("nextAction")
-	if nextPlayerTurn() then
-		if players[playerTurn].dead then
-			nextAction()
-		else
+function nextAction(firstTurn) -- If firstTurn == true then doesn't calls nextPlayerTurn
+	firstTurn = false or firstTurn
+	print("nextAction"..(firstTurn and "true" or "false"))
+	if not gameOccurring then return end 
+	if firstTurn or nextPlayerTurn() then
+		if (players[playerTurn].card==CARTA_LADRAO or players[playerTurn].card==CARTA_CORVO) and not players[playerTurn].dead then
+			-- If the player need a target selection
 			highlightPlayer(playerTurn)
+		elseif not players[playerTurn].dead and (players[playerTurn].card==CARTA_PATINADOR or players[playerTurn].card==CARTA_PESCADOR) then
+			if players[playerTurn].card==CARTA_PESCADOR then	-- Transform bird into fish !
+				setPlayerFish(playerTurn,players[playerTurn].fish+players[playerTurn].birds)
+				setPlayerBirds(playerTurn,0)
+				-- TODO Maybe this will mess with the animation
+			elseif players[playerTurn].card==CARTA_PATINADOR then
+				movePlayerConsumingResources(playerTurn, true)
+			end
+			if not gameOccurring then return end 
+			highlightPlayer(playerTurn)
+			timer.performWithDelay(2000,function() nextAction();end)
+		else	
+			nextAction()
 		end
 	else
 		step = STEP_MOVE
@@ -266,6 +243,7 @@ end
 
 function nextMove()
 	print("nextMove")
+	if not gameOccurring then return end 
 	if nextPlayerTurn() then
 		if players[playerTurn].dead or players[playerTurn].card==CARTA_LADRAO or players[playerTurn].card==CARTA_PATINADOR then
 			nextMove()
@@ -274,7 +252,7 @@ function nextMove()
 		end
 	else
 		local playerThatDefinesNewOrderIndex = 0
-		for i = 1, MAXPLAYERNUMBER do
+		for i = 1, playerCount do
 			if players[i].card==CARTA_DIABO then
 				playerThatDefinesNewOrderIndex=i
 				break
@@ -291,12 +269,6 @@ function nextMove()
 	end
 end
 
-function declareVictory(playerIndex)
-	--TODO something
-	print("Player "..playerIndex.." wins!!!")
-	--TODO return to title screen
-end
-
 function movePlayerConsumingResources(playerIndex,double)
 	double=double or false
 	distance=players[playerIndex]:moveConsumingResources(double)
@@ -308,37 +280,52 @@ end
 -- Only checks victory conditions and plays the animation
 function movePlayerEffects(playerIndex,distance)
 	if (animation==nil) then animation = true end -- Sets default true
-	--TODO animation
+	if animation then
+		--TODO animation
+	end
 	positionPlayerIcon(playerIndex)
-	if(players[playerIndex].boardPosition>=DISTANCEGOAL) then declareVictory(playerIndex) end
 	players[playerIndex]:printStatus() -- Debug purposes
+	if(players[playerIndex].boardPosition>=DISTANCEGOAL) then declareVictory(playerIndex) end
 end	
 
 -- Set variable playerTurn to the next player. Returns false if the next player and the first player are equal (the cicle is complete).
 function nextPlayerTurn()
-	playerTurn = playerTurn==MAXPLAYERNUMBER and 1 or playerTurn+1
+	print("extPlayerTurn()")
+	playerTurn = playerTurn==playerCount and 1 or playerTurn+1
 	return ( firstPlayer ~= playerTurn )
 end
 
 --------------------------------------------------
 --- Main text HUD
 --------------------------------------------------
+
 function refreshMainHUDText()
 	local text="Jogador "..playerTurn..": "
+	
+	textAction = {
+		[CARTA_CACADOR]="",
+		[CARTA_PESCADOR]="Usou seus pássaros para pegar peixes.",
+		[CARTA_PATINADOR]="Usou seus recursos para andar o dobro.",
+		[CARTA_DIABO]="",
+		[CARTA_CORVO]="Escolha de quem irá roubar 2 pássaros ou 1 peixe.",
+		[CARTA_LADRAO]="Escolha de quem irá roubar metade dos recursos"
+	}
+	
 	textStep={
 		[STEP_SELECTCARD]="Selecione sua carta.",
 		[STEP_KILLER]="Selecione quem será morto.",
-		[STEP_ACTION]="Usar sua ação?",  -- TODO improve this
+		[STEP_ACTION]=textAction[players[playerTurn].card],
 		[STEP_MOVE]="Andar?",
 		[STEP_NEWORDER]="Escolha o primeiro jogador do próximo turno."
 	}
 	text=text..textStep[step]
 	mainHUDText.text=text
 	-- Displays the right bar
-	for i = 1, MAXPLAYERNUMBER do
+	for i = 1, playerCount do
 		mainHUDBars[i].isVisible = playerTurn==i
 	end
 end
+
 --------------------------------------------------
 --- Functions that change visual/player things
 --------------------------------------------------
@@ -349,7 +336,7 @@ end
 -- Highlight in red. Also, refreshes the mainHUDText
 function highlightPlayer(playerIndex)
 	local selectedIndex = playerIndex or 0
-	for i = 1, MAXPLAYERNUMBER do
+	for i = 1, playerCount do
 		if i==selectedIndex then playersHUD[i]:setFillColor(1, 0, 0, 1) else playersHUD[i]:setFillColor(1, 1, 1, 1) end
 	end
 	refreshMainHUDText()
@@ -411,6 +398,7 @@ function positionPlayerIcon(playerIndex)
 	local lastY=400
 	playersIcons[playerIndex].y=firstY-(firstY-lastY)*players[playerIndex].boardPosition/DISTANCEGOAL
 end
+
 --------------------------------------------------
 --- Touch listeners
 --------------------------------------------------
@@ -430,7 +418,7 @@ function cardTouch (event)
 		if step == STEP_SELECTCARD then
 			-- Ignores if the card was already selected
 			local alreadySelected = false
-			for playerIndex = 1, MAXPLAYERNUMBER do
+			for playerIndex = 1, playerCount do
 				if players[playerIndex].card==cardIndex then alreadySelected=true end
 			end
 			if not alreadySelected then
@@ -442,15 +430,15 @@ function cardTouch (event)
 					killChoice()
 				end
 			end
-			print("index="..cardIndex)
 		end
+		return true
 	end
 end
 
 function playerTouch (event)
 	local playerIndex = 0
 	if (event.phase == "ended") then
-		for i = 1, MAXPLAYERNUMBER do
+		for i = 1, playerCount do
 			if (event.target == playersHUD[i]) then
 				playerIndex = i
 				break
@@ -465,20 +453,9 @@ function playerTouch (event)
 				-- Next step
 				firstPlayer=playerTurn
 				initializeActionTurn()
-				nextAction()
 			end
 		elseif step == STEP_ACTION then
-			if playerIndex==playerTurn then -- Clicked in yourself
-				if players[playerIndex].card==CARTA_PESCADOR then	-- Transform bird into fish !
-					setPlayerFish(playerIndex,players[playerIndex].fish+players[playerIndex].birds)
-					setPlayerBirds(playerIndex,0)
-					-- TODO Maybe this will mess with the animation
-					nextAction()
-				elseif players[playerIndex].card==CARTA_PATINADOR then
-					movePlayerConsumingResources(playerIndex, true)
-					nextAction()
-				end
-			else
+			if playerIndex~=playerTurn then -- Clicked at the target
 				if players[playerTurn].card==CARTA_LADRAO then
 					local stolen = players[playerIndex]:getHalfBirdsAndFish()
 					local stolenBirds=stolen[1]
@@ -517,16 +494,15 @@ function playerTouch (event)
 				nextTurn()
 			end
 		end
-		players[playerIndex]:printStatus() -- Debug purposes
+		return true
 	end
 end
 
 function passTouch (event)
 	if (event.phase == "ended") then
-		if step == STEP_ACTION then
-			nextAction()
-		elseif step == STEP_MOVE then
+		if step == STEP_MOVE then
 			nextMove()
 		end
 	end
+	return true
 end

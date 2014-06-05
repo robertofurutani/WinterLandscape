@@ -11,10 +11,10 @@ display.setDefault( "anchorY", 0.0 )
 bg = display.newGroup()
 botoesLayers = display.newGroup()
 bgTabuleiro = display.newGroup()
-playersHUDLayer = display.newGroup()
+playersHUDLayer = nil
+victoryLayer = nil
 bgCredito = display.newGroup()
 bgComoJogar = display.newGroup()
-
 
 -- Funcao que torna o botao vermelho ao touch
 local function tintRed (evento)
@@ -22,7 +22,7 @@ local function tintRed (evento)
 		evento.target:setFillColor(1, 0, 0, 1)
 	elseif (evento.phase == "ended") then
 		evento.target:setFillColor(1, 1, 1, 1)
-		if evento.target.id == "botao1p" then tapBotao1p() end
+		if evento.target.id == "botao1p" then tapBotao1p(); print("tapBotao1p()") end
 		if evento.target.id == "botao2p" then tapBotao2p() end
 		if evento.target.id == "botao3p" then tapBotao3p() end
 		if evento.target.id == "botao4p" then tapBotao4p() end
@@ -35,19 +35,23 @@ end
 
 --BG  do Menu
 function mostrarMenu()
-	 bgCredito.alpha = 0
-	 bgComoJogar.alpha = 0
-	 bgTabuleiro.alpha = 0
-	 bg.alpha = 1
-	 botoesLayers.alpha = 1
+	bgCredito.alpha = 0
+	bgComoJogar.alpha = 0
+	bgTabuleiro.alpha = 0
+	bg.alpha = 1
+	botoesLayers.alpha = 1
+end
 
-	 background = display.newImageRect( bg,"bg.png", 1024, 768)
+function inicializar()
+	mostrarMenu()
+
+	background = display.newImageRect( bg,"bg.png", 1024, 768)
 	
-	 baseMenu = display.newImageRect( bg,"baseMenu.png", 1024, 768)
+	baseMenu = display.newImageRect( bg,"baseMenu.png", 1024, 768)
 
-	 transFade( background, 500, 5000)
+	transFade( background, 500, 5000)
 
-	 transFade( baseMenu, 0, 2000)
+	transFade( baseMenu, 0, 2000)
 
 	--Botoes e suas transições
 	local botao1p = display.newImageRect( botoesLayers, "botao1p.png", 53, 55 )
@@ -144,16 +148,11 @@ end
 
 function mostrarTabuleiro()
     bgTabuleiro.alpha = 1
-
-	local tabuleiro = display.newImageRect( bgTabuleiro,"placeholder.jpg", 1024, 768)
-	--local tabuleiro = display.newImageRect( bgTabuleiro,"tabuleiro_fundo.jpg", 1024, 768)
-	transFade( tabuleiro, 0, 1000, esconderMenu)
-	initializeGame()
+	initializeGame(esconderMenu)
 end
 
 
 function mostrarComoJogar()
-	
     bgComoJogar.alpha = 1
 	local imgComoJogar = display.newImageRect( bgComoJogar,"comojogar.png", 1024, 768)
 	local btVoltar = display.newImageRect(bgComoJogar, "voltar.jpg", 100, 200 )
@@ -165,11 +164,9 @@ function mostrarComoJogar()
 	transFade( btVoltar, 0, 500)
 	print("mostrarComoJogar")
 	btVoltar:addEventListener( "touch", mostrarMenu)
-	
 end
 
 function mostrarCreditos()
-
 	bgCredito.alpha = 1
 	local imgCreditos = display.newImageRect( bgCredito,"creditos.png", 1024, 768)
 	local btVoltar = display.newImageRect(bgCredito, "voltar.jpg", 100, 200 )
@@ -181,8 +178,7 @@ function mostrarCreditos()
 	transFade( btVoltar, 0, 500)
 	
 	btVoltar:addEventListener( "touch", mostrarMenu)
-	
 end
 
 
-mostrarMenu()
+inicializar()
