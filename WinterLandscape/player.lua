@@ -8,7 +8,7 @@ function Player.create(index)
     object.card=0
 	object.birds=0
 	object.fish=0
-	object.boardPosition=0
+	object.boardPosition=1
 	object.dead=false
     return object
 end

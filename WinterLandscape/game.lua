@@ -1,6 +1,7 @@
 require("player")
 
 local DISTANCEGOAL = 20
+local PLAYERSROTATION = {45,135,225,270,315}
 
 local CARTA_CACADOR=1
 local CARTA_PESCADOR=2
@@ -41,61 +42,16 @@ turnNumber=0
 --- Initialize/Finalize functions
 --------------------------------------------------
 
-function initializeGame(functionAfterFade)
-	playerCount = 5
+function initializeGame(playersNumber, functionAfterFade)
+	playerCount = playersNumber
 	
 	-- Initialize player objects
 	for i = 1, playerCount do
 		players[i]=Player.create(i)
 	end
 	
-	playersHUDLayer=display.newGroup()
-	board = display.newImageRect(bgTabuleiro,"placeholder.jpg", 1024, 768)
-	-- board = display.newImageRect( bgboard,"board_fundo.jpg", 1024, 768)
-	
-	-- Technically this button is only for the moveStep
-	passButton = display.newImageRect( playersHUDLayer, "botao5p.png", 53, 55 )
-	passButton.x = 825
-	passButton.y = 20
-	passButton:addEventListener( "touch", passTouch)
-	
-	-- Main HUD
-	mainHUDText = display.newText({parent=playersHUDLayer, x=100, y=730, text="",font=native.systemFont, fontSize=32})
-	mainHUDText:setFillColor(0,0,0) 
-	local mainHUDBarsPaths = {"barraYellow.png","barraBlue.png","barraPink.png","barraRed.png","barraGreen.png"}
-	for i = 1, playerCount do -- Draw all bar at the same positions, but only the right one will be visible
-		mainHUDBars[i] = display.newImageRect( playersHUDLayer, mainHUDBarsPaths[i], 760, 1024 )
-		mainHUDBars[i].x = 10
-		mainHUDBars[i].y = 0
-		mainHUDBars.isVisible = false
-	end
-	
-	for i = 1, playerCount do
-		-- Birds counter
-		playersHUDBirds[i] = display.newText({parent=playersHUDLayer, text="0",font=native.systemFont, fontSize=16})
-		playersHUDBirds[i]:setFillColor(0,0,0) 
-		playersHUDBirds[i].x = ({125, 225, 325, 425, 525})[i]
-		playersHUDBirds[i].y = ({300, 300, 300, 300, 300})[i]
-		
-		-- Fish counter
-		playersHUDFish[i] = display.newText({parent=playersHUDLayer, text="0",font=native.systemFont, fontSize=16})
-		playersHUDFish[i]:setFillColor(0,0,0)
-		playersHUDFish[i].x = ({150, 250, 350, 450, 550})[i]
-		playersHUDFish[i].y = ({300, 300, 300, 300, 300})[i]
-		
-		-- Player HUD
-		local playersHUDPath = ({"botao1p.png","botao2p.png","botao3p.png","botao4p.png","botao5p.png"})[i]
-		playersHUD[i] = display.newImageRect( playersHUDLayer, playersHUDPath, 53, 55 )
-		playersHUD[i].x = ({125, 225, 325, 425, 525})[i]
-		playersHUD[i].y = ({200, 200, 200, 200, 200})[i]
-		playersHUD[i]:addEventListener( "touch", playerTouch)
-		
-		-- Players Icons
-		local playersIconsPath = ({"playerYellow.png","playerBlue.png","playerPink.png","playerRed.png","playerGreen.png"})[i] 
-		playersIcons[i] = display.newImageRect( playersHUDLayer, playersIconsPath, 19, 35 )
-		playersIcons[i].x = ({125, 225, 325, 425, 525})[i]
-		positionPlayerIcon(i) -- define icon y
-	end
+	gameLayer=display.newGroup()
+	board = display.newImageRect( gameLayer,"tabuleiro.png", 760, 1024)
 	
 	-- Cards image
 	for _,cardIndex in ipairs({CARTA_CACADOR,CARTA_PESCADOR,CARTA_PATINADOR,CARTA_DIABO,CARTA_CORVO,CARTA_LADRAO}) do
@@ -107,16 +63,62 @@ function initializeGame(functionAfterFade)
 			[CARTA_CORVO]="cartaCorvoFrente.png",
 			[CARTA_LADRAO]="cartaLadraoFrente.png",
 		})[cardIndex] 
-		cards[cardIndex] = display.newImageRect( playersHUDLayer, cardPath, 142, 190 )
+		cards[cardIndex] = display.newImageRect( gameLayer, cardPath, 142, 190 )
+		cards[cardIndex].anchorX = 0.5
+		cards[cardIndex].anchorY = 0.5
 		cards[cardIndex]:addEventListener( "touch", cardTouch)
 		positionNonPlayerCard(cardIndex)
 	end
 	
+	-- Technically this button is only for the moveStep
+	passButton = display.newImageRect( gameLayer, "botao5p.png", 53, 55 )
+	passButton.x = 825
+	passButton.y = 20
+	passButton:addEventListener( "touch", passTouch)
+	
 	-- Dead Icon
-	deadIcon = display.newImageRect( playersHUDLayer, "botaoRecusar.png", 193, 193 )
+	deadIcon = display.newImageRect( gameLayer, "lapide.png", 58, 85 )
 	deadIcon.isVisible = false
 	
-	transFade( playersHUDLayer, 0, 3000, functionAfterFade)
+	for i = 1, playerCount do 
+		-- Draw all bar at the same positions, but only the right one will be visible
+		local mainHUDBarsPaths = {"barraYellow.png","barraBlue.png","barraPink.png","barraRed.png","barraGreen.png"}
+		mainHUDBars[i] = display.newImageRect( gameLayer, mainHUDBarsPaths[i], 760, 1024 )
+		mainHUDBars.isVisible = false
+		
+		-- Player HUD
+		local playersHUDPath = ({"player1Hud.png","player2Hud.png","player3Hud.png","player4Hud.png","player5Hud.png"})[i]
+		playersHUD[i] = display.newImageRect( gameLayer, playersHUDPath, ({208, 239, 207, 91, 241})[i], ({247, 209, 240, 394, 208})[i])
+		playersHUD[i].x = ({37, 37, 553, 669, 519})[i]
+		playersHUD[i].y = ({777, 0, 0, 315, 816})[i]
+		playersHUD[i]:addEventListener( "touch", playerTouch)
+		
+		-- Birds counter
+		playersHUDBirds[i] = display.newText({parent=gameLayer, text="0",font=native.systemFont, fontSize=16})
+		playersHUDBirds[i].x = ({57, 57, 573, 589, 539})[i]
+		playersHUDBirds[i].y = ({777, 0, 0, 315, 816})[i]
+		playersHUDBirds[i].anchorX = 0.5
+		playersHUDBirds[i].rotation = PLAYERSROTATION[i]
+		
+		-- Fish counter
+		playersHUDFish[i] = display.newText({parent=gameLayer, text="0",font=native.systemFont, fontSize=16})
+		playersHUDFish[i].x = ({67, 67, 583, 599, 549})[i]
+		playersHUDFish[i].y = ({777, 0, 0, 315, 816})[i]
+		playersHUDFish[i].anchorX = 0.5
+		playersHUDFish[i].rotation = PLAYERSROTATION[i]
+		
+		-- Players Icons
+		local playersIconsPath = ({"playerYellow.png","playerBlue.png","playerPink.png","playerRed.png","playerGreen.png"})[i] 
+		playersIcons[i] = display.newImageRect( gameLayer, playersIconsPath, 19, 35 )
+		playersIcons[i].x = ({300, 325, 350, 375, 400})[i]
+		positionPlayerIcon(i) -- define icon y
+	end
+	
+	-- Main HUD text
+	mainHUDText = display.newText({parent=gameLayer, x=18, y=18, text="",font=native.systemFont, fontSize=32})
+	mainHUDText.anchorY = 0.5
+	
+	transFade( gameLayer, 0, 3000, functionAfterFade)
 	
 	gameOccurring=true
 	firstPlayer=math.random(5)
@@ -134,8 +136,8 @@ function finalizeGame()
 	playersHUD={}
 	playersIcons={}
 	cards={}
-	playersHUDLayer:removeSelf()
-	playersHUDLayer=nil
+	gameLayer:removeSelf()
+	gameLayer=nil
 	
 	playerCount = 0
 	players = {}
@@ -320,6 +322,7 @@ function refreshMainHUDText()
 	}
 	text=text..textStep[step]
 	mainHUDText.text=text
+	mainHUDText.rotation=90
 	-- Displays the right bar
 	for i = 1, playerCount do
 		mainHUDBars[i].isVisible = playerTurn==i
@@ -333,12 +336,9 @@ end
 -- Implement these methods at player object ?
 
 -- Highlight the player. When param<1 or there is no param = No Highlight 
--- Highlight in red. Also, refreshes the mainHUDText
+-- Also, refreshes the mainHUDText
 function highlightPlayer(playerIndex)
-	local selectedIndex = playerIndex or 0
-	for i = 1, playerCount do
-		if i==selectedIndex then playersHUD[i]:setFillColor(1, 0, 0, 1) else playersHUD[i]:setFillColor(1, 1, 1, 1) end
-	end
+	-- Only refreshes the mainHUDText now.
 	refreshMainHUDText()
 end
 
@@ -356,13 +356,15 @@ function removePlayerCard(playerIndex)
 end
 
 function positionPlayerCard(playerIndex,cardIndex)
-	cards[cardIndex].x = 25 + 100 * playerIndex
-	cards[cardIndex].y = 0
+	cards[cardIndex].x = ({57, 57, 573, 589, 539})[playerIndex]
+	cards[cardIndex].y = ({777, 0, 0, 315, 816})[playerIndex]
+	cards[cardIndex].rotation=PLAYERSROTATION[playerIndex]
 end
 
 function positionNonPlayerCard(cardIndex)
-	cards[cardIndex].x = 650
-	cards[cardIndex].y = -140 + 120 * cardIndex
+	cards[cardIndex].x = 160 + 56 * cardIndex
+	cards[cardIndex].y = 960
+	cards[cardIndex].rotation = -20
 end
 
 function setPlayerBirds(playerIndex, birds)
@@ -380,8 +382,9 @@ end
 function killPlayer(playerIndex)
 	players[playerIndex].dead=true
 	-- Change the only icon position, since only only one player can be dead per turn
-	deadIcon.x = 25+playerIndex*100
-	deadIcon.y = 20
+	deadIcon.x = ({57, 57, 573, 589, 539})[playerIndex]
+	deadIcon.y = ({777, 0, 0, 315, 816})[playerIndex]
+	deadIcon.rotation=PLAYERSROTATION[playerIndex]
 	deadIcon.isVisible=true
 	--TODO animation
 end
@@ -394,9 +397,9 @@ end
 
 function positionPlayerIcon(playerIndex)
 	-- Defines the first and last positions
-	local firstY=700
-	local lastY=400
-	playersIcons[playerIndex].y=firstY-(firstY-lastY)*players[playerIndex].boardPosition/DISTANCEGOAL
+	local firstY=820
+	local lastY=420
+	playersIcons[playerIndex].y=firstY-(firstY-lastY)*(players[playerIndex].boardPosition-1)/(DISTANCEGOAL-1)
 end
 
 --------------------------------------------------
@@ -430,8 +433,8 @@ function cardTouch (event)
 					killChoice()
 				end
 			end
+			return true
 		end
-		return true
 	end
 end
 
@@ -454,6 +457,7 @@ function playerTouch (event)
 				firstPlayer=playerTurn
 				initializeActionTurn()
 			end
+			return true
 		elseif step == STEP_ACTION then
 			if playerIndex~=playerTurn then -- Clicked at the target
 				if players[playerTurn].card==CARTA_LADRAO then
@@ -482,19 +486,21 @@ function playerTouch (event)
 					nextAction()
 				end
 			end
+			return true
 		elseif step == STEP_MOVE then
 			if playerIndex==playerTurn then
 				movePlayerConsumingResources(playerIndex)
 				-- TODO Maybe this will mess with the animation
 				nextMove()
 			end
+			return true
 		elseif step == STEP_NEWORDER then
 			if playerIndex~=playerTurn then  -- Cannot choose yourself for the first in the next turn
 				firstPlayer=playerIndex
 				nextTurn()
 			end
+			return true
 		end
-		return true
 	end
 end
 
