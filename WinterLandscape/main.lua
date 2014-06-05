@@ -10,8 +10,7 @@ display.setDefault( "anchorY", 0.0 )
 -- Definição dos display groups (camadas)
 bg = display.newGroup()
 botoesLayers = display.newGroup()
-bgTabuleiro = display.newGroup()
-playersHUDLayer = nil
+gameLayer = nil
 victoryLayer = nil
 bgCredito = display.newGroup()
 bgComoJogar = display.newGroup()
@@ -37,7 +36,6 @@ end
 function mostrarMenu()
 	bgCredito.alpha = 0
 	bgComoJogar.alpha = 0
-	bgTabuleiro.alpha = 0
 	bg.alpha = 1
 	botoesLayers.alpha = 1
 end
@@ -45,59 +43,59 @@ end
 function inicializar()
 	mostrarMenu()
 
-	background = display.newImageRect( bg,"bg.png", 1024, 768)
+	background = display.newImageRect( bg,"bg.png", 768, 1024)
 	
-	baseMenu = display.newImageRect( bg,"baseMenu.png", 1024, 768)
+	baseMenu = display.newImageRect( bg,"baseMenu.png", 768, 1024)
 
-	transFade( background, 500, 5000)
+	transFade( background, 5000, 500)
 
-	transFade( baseMenu, 0, 2000)
+	transFade( baseMenu, 2000, 0)
 
 	--Botoes e suas transições
-	local botao1p = display.newImageRect( botoesLayers, "botao1p.png", 53, 55 )
-	botao1p.x = 625
-	botao1p.y = 400
+	local botao1p = display.newImageRect( botoesLayers, "botao1p.png", 55, 53 )
+	botao1p.x = 400
+	botao1p.y = 625
 	transFade (botao1p, 800, 2000)
 	botao1p.id = "botao1p"
 
-	local botao2p = display.newImageRect( botoesLayers, "botao2p.png", 53, 55 )
-	botao2p.x = 675
-	botao2p.y = 400
+	local botao2p = display.newImageRect( botoesLayers, "botao2p.png", 55, 53 )
+	botao2p.x = 400
+	botao2p.y = 675
 	transFade (botao2p, 1000, 2000)
 	botao2p.id = "botao2p"
 
 
-	local botao3p = display.newImageRect( botoesLayers, "botao3p.png", 68, 55 )
-	botao3p.x = 740
-	botao3p.y = 402
+	local botao3p = display.newImageRect( botoesLayers, "botao3p.png", 55, 68 )
+	botao3p.x = 402 
+	botao3p.y = 740
 	transFade (botao3p, 1200, 2000)
 	botao3p.id = "botao3p"
 
 
-	local botao4p = display.newImageRect( botoesLayers, "botao4p.png", 68, 55 )
-	botao4p.x = 830
-	botao4p.y = 402
+	local botao4p = display.newImageRect( botoesLayers, "botao4p.png", 55, 68 )
+	botao4p.x = 402
+	botao4p.y = 830
 	transFade (botao4p, 1400, 2000)
 	botao4p.id = "botao4p"
 
 
-	local botao5p = display.newImageRect( botoesLayers, "botao5p.png", 68, 55 )
-	botao5p.x = 910
-	botao5p.y = 401
+	local botao5p = display.newImageRect( botoesLayers, "botao5p.png", 55, 68 )
+	botao5p.x = 401
+	botao5p.y = 910
 	transFade (botao5p, 1600, 2500)
 	botao5p.id = "botao5p"
 
 
-	local botaoCredito = display.newImageRect( botoesLayers, "botaoCredito.png", 185, 48 )
-	botaoCredito.x = 130
-	botaoCredito.y = 720
+	local botaoCredito = display.newImageRect( botoesLayers, "botaoCredito.png", 48, 185)
+	botaoCredito.x = 720
+	botaoCredito.y = 130 
 	transFade (botaoCredito, 1800, 2000)
 	botaoCredito.id = "botaoCredito"
 
 
-	local botaoComo = display.newImageRect( botoesLayers, "botaoComo.png", 185, 48 )
-	botaoComo.x = 300
-	botaoComo.y = 720
+	local botaoComo = display.newImageRect( botoesLayers, "botaoComo.png", 48, 185 )
+	botaoComo.x = 720
+	botaoComo.y = 300
 	transFade (botaoComo, 1800, 2000)
 	botaoComo.id = "botaoComo"
 
@@ -114,23 +112,31 @@ end
 --Funcoes dos Botões
 function tapBotao1p()
 	esconderMenu()
-	mostrarTabuleiro()
+	initializeGame(1,esconderMenu)
 end
 
 function tapBotao2p ()
   print ("Botao 2 pressionado")
+	esconderMenu()
+	initializeGame(2,esconderMenu)
 end
 
 function tapBotao3p ()
 print ("Botao 3 pressionado")
+	esconderMenu()
+	initializeGame(3,esconderMenu)
 end
 
 function tapBotao4p ()
 print ("Botao 4 pressionado")
+	esconderMenu()
+	initializeGame(4,esconderMenu)
 end
 
 function tapBotao5p ()
 print ("Botao 5 pressionado")
+	esconderMenu()
+	initializeGame(5,esconderMenu)
 end
 
 function tapBotaoComo ()
@@ -146,18 +152,12 @@ function esconderMenu()
 	botoesLayers.alpha = 0
 end
 
-function mostrarTabuleiro()
-    bgTabuleiro.alpha = 1
-	initializeGame(esconderMenu)
-end
-
-
 function mostrarComoJogar()
     bgComoJogar.alpha = 1
-	local imgComoJogar = display.newImageRect( bgComoJogar,"comojogar.png", 1024, 768)
-	local btVoltar = display.newImageRect(bgComoJogar, "voltar.jpg", 100, 200 )
-	btVoltar.x = 900
-	btVoltar.y = 300
+	local imgComoJogar = display.newImageRect( bgComoJogar,"comojogar.png", 768, 1024)
+	local btVoltar = display.newImageRect(bgComoJogar, "voltar.jpg", 200, 100 )
+	btVoltar.x = 300
+	btVoltar.y = 900
 	
 	btVoltar.id = "btVoltar"
 	transFade( imgComoJogar, 0, 500, esconderMenu)
@@ -168,10 +168,10 @@ end
 
 function mostrarCreditos()
 	bgCredito.alpha = 1
-	local imgCreditos = display.newImageRect( bgCredito,"creditos.png", 1024, 768)
-	local btVoltar = display.newImageRect(bgCredito, "voltar.jpg", 100, 200 )
-	btVoltar.x = 900
-	btVoltar.y = 300
+	local imgCreditos = display.newImageRect( bgCredito,"creditos.png",  768, 1024)
+	local btVoltar = display.newImageRect(bgCredito, "voltar.jpg", 200, 100 )
+	btVoltar.x = 300
+	btVoltar.y = 900
 	
 	btVoltar.id = "btVoltar"
 	transFade( imgCreditos, 0, 500, esconderMenu)
