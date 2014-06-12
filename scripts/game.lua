@@ -1,4 +1,6 @@
-require("player")
+require("scripts.player")
+
+local IMGDIR = "images/game/"
 
 local DISTANCEGOAL = 20
 local PLAYERSROTATION = {45,135,225,270,315}
@@ -51,7 +53,7 @@ function initializeGame(playersNumber, functionAfterFade)
 	end
 	
 	gameLayer=display.newGroup()
-	board = display.newImageRect( gameLayer,"tabuleiro.png", 760, 1024)
+	board = display.newImageRect( gameLayer,IMGDIR.."tabuleiro.png", 760, 1024)
 	
 	-- Cards image
 	for _,cardIndex in ipairs({CARTA_CACADOR,CARTA_PESCADOR,CARTA_PATINADOR,CARTA_DIABO,CARTA_CORVO,CARTA_LADRAO}) do
@@ -63,7 +65,7 @@ function initializeGame(playersNumber, functionAfterFade)
 			[CARTA_CORVO]="cartaCorvoFrente.png",
 			[CARTA_LADRAO]="cartaLadraoFrente.png",
 		})[cardIndex] 
-		cards[cardIndex] = display.newImageRect( gameLayer, cardPath, 142, 190 )
+		cards[cardIndex] = display.newImageRect( gameLayer, IMGDIR..cardPath, 142, 190 )
 		cards[cardIndex].anchorX = 0.5
 		cards[cardIndex].anchorY = 0.5
 		cards[cardIndex]:addEventListener( "touch", cardTouch)
@@ -71,24 +73,24 @@ function initializeGame(playersNumber, functionAfterFade)
 	end
 	
 	-- Technically this button is only for the moveStep
-	passButton = display.newImageRect( gameLayer, "botao5p.png", 53, 55 )
+	passButton = display.newImageRect( gameLayer, IMGDIR.."botao5p.png", 53, 55 )
 	passButton.x = 825
 	passButton.y = 20
 	passButton:addEventListener( "touch", passTouch)
 	
 	-- Dead Icon
-	deadIcon = display.newImageRect( gameLayer, "lapide.png", 58, 85 )
+	deadIcon = display.newImageRect( gameLayer, IMGDIR.."lapide.png", 58, 85 )
 	deadIcon.isVisible = false
 	
 	for i = 1, playerCount do 
 		-- Draw all bar at the same positions, but only the right one will be visible
 		local mainHUDBarsPaths = {"barraYellow.png","barraBlue.png","barraPink.png","barraRed.png","barraGreen.png"}
-		mainHUDBars[i] = display.newImageRect( gameLayer, mainHUDBarsPaths[i], 760, 1024 )
+		mainHUDBars[i] = display.newImageRect( gameLayer, IMGDIR..mainHUDBarsPaths[i], 760, 1024 )
 		mainHUDBars.isVisible = false
 		
 		-- Player HUD
 		local playersHUDPath = ({"player1Hud.png","player2Hud.png","player3Hud.png","player4Hud.png","player5Hud.png"})[i]
-		playersHUD[i] = display.newImageRect( gameLayer, playersHUDPath, ({208, 239, 207, 91, 241})[i], ({247, 209, 240, 394, 208})[i])
+		playersHUD[i] = display.newImageRect( gameLayer, IMGDIR..playersHUDPath, ({208, 239, 207, 91, 241})[i], ({247, 209, 240, 394, 208})[i])
 		playersHUD[i].x = ({37, 37, 553, 669, 519})[i]
 		playersHUD[i].y = ({777, 0, 0, 315, 816})[i]
 		playersHUD[i]:addEventListener( "touch", playerTouch)
@@ -109,7 +111,7 @@ function initializeGame(playersNumber, functionAfterFade)
 		
 		-- Players Icons
 		local playersIconsPath = ({"playerYellow.png","playerBlue.png","playerPink.png","playerRed.png","playerGreen.png"})[i] 
-		playersIcons[i] = display.newImageRect( gameLayer, playersIconsPath, 19, 35 )
+		playersIcons[i] = display.newImageRect( gameLayer, IMGDIR..playersIconsPath, 19, 35 )
 		playersIcons[i].x = ({300, 325, 350, 375, 400})[i]
 		positionPlayerIcon(i) -- define icon y
 	end
@@ -152,7 +154,7 @@ end
 function declareVictory(playerIndex)
 	finalizeGame()
 	victoryLayer = display.newGroup()
-	local victoryScreen = display.newImageRect( victoryLayer, "victoryscreen.jpg", 1024, 768 )
+	local victoryScreen = display.newImageRect( victoryLayer, IMGDIR.."victoryscreen.jpg", 1024, 768 )
 	local text = "Vitória do jogador "..playerIndex.."!"
 	local victoryText = display.newText({parent=victoryLayer, x=100, y=730, text=text,font=native.systemFont, fontSize=32})
 	victoryText:setFillColor(0,0,0) 
