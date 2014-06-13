@@ -1,9 +1,14 @@
 require("scripts.player")
+require("scripts.decisionBox")
 
 local IMGDIR = "images/game/"
 
 local DISTANCEGOAL = 20
+
 local PLAYERSROTATION = {45,135,225,270,315}
+local PLAYERSTEXTCOLOR = {{0.9, 0.9, 0.5},{0.6, 0.6, 1},{1, 0.4, 0.8},{1, 0.6, 0.6},{0.8, 1, 0.6}}
+local COLORNAMES = {"Amarelo","Azul","Rosa","Vermelho", "Verde"}
+local FONT = "Garamond Premier Pro Bold"
 
 local CARTA_CACADOR=1
 local CARTA_PESCADOR=2
@@ -13,32 +18,35 @@ local CARTA_CORVO=5
 local CARTA_LADRAO=6
 
 -- GUI
-playersHUD = {}
-playersHUDBirds = {}
-playersHUDFish = {}
-playersIcons = {}
-cards = {}
-mainHUDBars={}
-mainHUDText=nil
-passButton=nil
-deadIcon=nil
-board=nil
+local playersHUD = {}
+local playersHUDBirds = {}
+local playersHUDFish = {}
+local playersIcons = {}
+local cards = {}
+local mainHUDBars={}
+local mainHUDText=nil
+local passButton=nil
+local deadIcon=nil
+local board=nil
+local decisionBox=nil
 
 -- Steps
-STEP_SELECTCARD=1
-STEP_KILLER=2
-STEP_ACTION=3
-STEP_MOVE=4
-STEP_NEWORDER=5
+local STEP_SELECTCARD=1
+local STEP_KILLER=2
+local STEP_ACTION=3
+local STEP_MOVE=4
+local STEP_NEWORDER=5
 
 -- Others
-playerCount = 0
-players = {}
-firstPlayer=0
-playerTurn=0
-step=0
-gameOccurring=false
-turnNumber=0
+local playerCount = 0
+local players = {}
+local firstPlayer=0
+local playerTurn=0
+local step=0
+local selectedCard = 0
+local decisionTime = false
+local gameOccurring=false
+local turnNumber=0
 
 --------------------------------------------------
 --- Initialize/Finalize functions
@@ -56,6 +64,7 @@ function initializeGame(playersNumber, functionAfterFade)
 	board = display.newImageRect( gameLayer,IMGDIR.."tabuleiro.png", 760, 1024)
 	
 	-- Cards image
+	local cardCount=1
 	for _,cardIndex in ipairs({CARTA_CACADOR,CARTA_PESCADOR,CARTA_PATINADOR,CARTA_DIABO,CARTA_CORVO,CARTA_LADRAO}) do
 		local cardPath = ({
 			[CARTA_CACADOR]="cartaCacadorFrente.png",
@@ -68,8 +77,15 @@ function initializeGame(playersNumber, functionAfterFade)
 		cards[cardIndex] = display.newImageRect( gameLayer, IMGDIR..cardPath, 142, 190 )
 		cards[cardIndex].anchorX = 0.5
 		cards[cardIndex].anchorY = 0.5
+		cards[cardIndex].rotation=70
 		cards[cardIndex]:addEventListener( "touch", cardTouch)
-		positionNonPlayerCard(cardIndex)
+		
+	    local x, y = nonPlayerCardXY(cardIndex)
+		cards[cardIndex].x=x-150
+		cards[cardIndex].y=y
+		transition.to(cards[cardIndex], {delay=1000+300*cardCount, time=1200, x=x, y=y, transition=easing.inOutQuad})
+		
+		cardCount=cardCount+1
 	end
 	
 	-- Technically this button is only for the moveStep
@@ -83,56 +99,85 @@ function initializeGame(playersNumber, functionAfterFade)
 	deadIcon.isVisible = false
 	
 	for i = 1, playerCount do 
-		-- Draw all bar at the same positions, but only the right one will be visible
-		local mainHUDBarsPaths = {"barraYellow.png","barraBlue.png","barraPink.png","barraRed.png","barraGreen.png"}
-		mainHUDBars[i] = display.newImageRect( gameLayer, IMGDIR..mainHUDBarsPaths[i], 760, 1024 )
-		mainHUDBars.isVisible = false
-		
 		-- Player HUD
 		local playersHUDPath = ({"player1Hud.png","player2Hud.png","player3Hud.png","player4Hud.png","player5Hud.png"})[i]
 		playersHUD[i] = display.newImageRect( gameLayer, IMGDIR..playersHUDPath, ({208, 239, 207, 91, 241})[i], ({247, 209, 240, 394, 208})[i])
-		playersHUD[i].x = ({37, 37, 553, 669, 519})[i]
-		playersHUD[i].y = ({777, 0, 0, 315, 816})[i]
+		local hudFinalX = ({37, 37, 553, 669, 519})[i]
+		local hudFinalY = ({777, 0, 0, 315, 816})[i]
+		local hudWidth = playersHUD[i].width
+		local hudHeight = playersHUD[i].height
+		-- Initial position before the HUD appears at screen
+		playersHUD[i].x = ({-hudWidth, -hudWidth, hudWidth, hudWidth, hudWidth})[i] + hudFinalX
+		playersHUD[i].y = ({hudHeight, -hudHeight, -hudHeight, 0, hudHeight})[i] + hudFinalY
+	    transition.to(playersHUD[i], {delay=1000+400*i, time=2000, x=hudFinalX, y=hudFinalY, transition=easing.inOutQuad})
 		playersHUD[i]:addEventListener( "touch", playerTouch)
 		
 		-- Birds counter
-		playersHUDBirds[i] = display.newText({parent=gameLayer, text="0",font=native.systemFont, fontSize=16})
+		playersHUDBirds[i] = display.newText({parent=gameLayer, text="0",font=FONT, fontSize=22})
 		playersHUDBirds[i].x = ({57, 57, 573, 589, 539})[i]
 		playersHUDBirds[i].y = ({777, 0, 0, 315, 816})[i]
+		playersHUDBirds[i]:setFillColor(PLAYERSTEXTCOLOR[i][1],PLAYERSTEXTCOLOR[i][2],PLAYERSTEXTCOLOR[i][3])
 		playersHUDBirds[i].anchorX = 0.5
 		playersHUDBirds[i].rotation = PLAYERSROTATION[i]
+		playersHUDBirds[i].alpha=0
+		transition.to ( playersHUDBirds[i], { delay=5000, time=2000, alpha=1, transition=easing.inOutQuad})
 		
 		-- Fish counter
-		playersHUDFish[i] = display.newText({parent=gameLayer, text="0",font=native.systemFont, fontSize=16})
+		playersHUDFish[i] = display.newText({parent=gameLayer, text="0",font=FONT, fontSize=22})
 		playersHUDFish[i].x = ({67, 67, 583, 599, 549})[i]
 		playersHUDFish[i].y = ({777, 0, 0, 315, 816})[i]
+		playersHUDFish[i]:setFillColor(PLAYERSTEXTCOLOR[i][1],PLAYERSTEXTCOLOR[i][2],PLAYERSTEXTCOLOR[i][3])
 		playersHUDFish[i].anchorX = 0.5
 		playersHUDFish[i].rotation = PLAYERSROTATION[i]
+		playersHUDFish[i].alpha=0
+		transition.to ( playersHUDFish[i], { delay=5000, time=2000, alpha=1, transition=easing.inOutQuad})
 		
 		-- Players Icons
 		local playersIconsPath = ({"playerYellow.png","playerBlue.png","playerPink.png","playerRed.png","playerGreen.png"})[i] 
 		playersIcons[i] = display.newImageRect( gameLayer, IMGDIR..playersIconsPath, 19, 35 )
 		playersIcons[i].x = ({300, 325, 350, 375, 400})[i]
-		positionPlayerIcon(i) -- define icon y
+		playersIcons[i].y = playerIconY(i)
+		
+		-- Draw all bar at the same positions, but only the right one will be visible
+		local mainHUDBarsPaths = {"barraYellow.png","barraBlue.png","barraPink.png","barraRed.png","barraGreen.png"}
+		mainHUDBars[i] = display.newImageRect( gameLayer, IMGDIR..mainHUDBarsPaths[i], 760, 1024 )
+		mainHUDBars.isVisible = false
 	end
 	
 	-- Main HUD text
-	mainHUDText = display.newText({parent=gameLayer, x=18, y=18, text="",font=native.systemFont, fontSize=32})
+	mainHUDText = display.newText({parent=gameLayer, x=18, y=0, text="",font=FONT, fontSize=32})
+	mainHUDText.y = display.viewableContentHeight/2
+	mainHUDText.anchorX = 0.5
 	mainHUDText.anchorY = 0.5
+	mainHUDText.rotation = 90	
+	
+	-- Decision Box
+	local decisionBoxLayer = display.newGroup()
+	gameLayer:insert( decisionBoxLayer )
+	local confirmButton = display.newImageRect( decisionBoxLayer, IMGDIR.."botaoConfirmar.png", 97, 97 )
+	local cancelButton = display.newImageRect( decisionBoxLayer, IMGDIR.."botaoRecusar.png", 97, 97 )
+	confirmButton:addEventListener( "touch", confirmTouch)
+	cancelButton:addEventListener( "touch", cancelTouch)
+	local titleText = display.newText({parent=decisionBoxLayer, text="",font=FONT, fontSize=22})
+	local descriptionText = display.newText({parent=decisionBoxLayer, text="",font=FONT, fontSize=16})
+	decisionBox = DecisionBox.create(PLAYERSROTATION,COLORNAMES,PLAYERSTEXTCOLOR,decisionBoxLayer,confirmButton,cancelButton,titleText,descriptionText)	
 	
 	transFade( gameLayer, 0, 3000, functionAfterFade)
 	
 	gameOccurring=true
-	firstPlayer=math.random(5)
+	firstPlayer=math.random(playerCount)
 	nextTurn()
 end
 
 -- Remove all images, restart the layer and going back to the menu screen
 function finalizeGame()
 	print("finalizeGame")
-	board=nil
-	passButton=nil
-	mainHUDText=nil
+	--board=nil
+	--passButton=nil
+	--mainHUDText=nil
+	--confirmButton=nil
+	--cancelButton=nil
+	decisionBox=nil
 	playersHUDBirds={}
 	playersHUDFish={}
 	playersHUD={}
@@ -146,17 +191,20 @@ function finalizeGame()
 	firstPlayer=0
 	playerTurn=0
 	step=0
+	selectedCard = 0
+	decisionTime = false
 	turnNumber=0
-	gameOccurring=false
 end
 
 
 function declareVictory(playerIndex)
 	finalizeGame()
 	victoryLayer = display.newGroup()
-	local victoryScreen = display.newImageRect( victoryLayer, IMGDIR.."victoryscreen.jpg", 1024, 768 )
-	local text = "Vitória do jogador "..playerIndex.."!"
-	local victoryText = display.newText({parent=victoryLayer, x=100, y=730, text=text,font=native.systemFont, fontSize=32})
+	local victoryScreen = display.newImageRect( victoryLayer, IMGDIR.."victoryscreen.jpg", 768, 1024 )
+	local text = "Vitória do Jogador "..COLORNAMES[playerIndex].."!"
+	local victoryText = display.newText({parent=victoryLayer, x=100, y=100, text=text,font=FONT, fontSize=32})
+	victoryText.anchorY = 0.5
+	victoryText.rotation = 90
 	victoryText:setFillColor(0,0,0) 
 	
 	local restart = function() 
@@ -273,6 +321,23 @@ function nextMove()
 	end
 end
 
+function activateDecisionTime()
+	decisionTime=true
+	--TODO animation
+	--TODO card positioning
+	if(selectedCard~=0) then -- Do the card animation
+		--TODO
+	end
+	decisionBox:activate(playerTurn,"Confirma a seleção da carta?",false)
+end
+
+function deactivateDecisionTime()
+	decisionTime=false
+	--TODO animation
+	--TODO card positioning
+	decisionBox:deactivate()
+end
+
 function movePlayerConsumingResources(playerIndex,double)
 	double=double or false
 	distance=players[playerIndex]:moveConsumingResources(double)
@@ -283,13 +348,12 @@ end
 
 -- Only checks victory conditions and plays the animation
 function movePlayerEffects(playerIndex,distance)
-	if (animation==nil) then animation = true end -- Sets default true
-	if animation then
-		--TODO animation
-	end
-	positionPlayerIcon(playerIndex)
+	transition.to(playersIcons[playerIndex], {y=playerIconY(playerIndex), time=800, transition=easing.inOutQuad, onComplete=animacaoCompleta})
 	players[playerIndex]:printStatus() -- Debug purposes
-	if(players[playerIndex].boardPosition>=DISTANCEGOAL) then declareVictory(playerIndex) end
+	if(players[playerIndex].boardPosition>=DISTANCEGOAL) then 
+		gameOccurring=false
+		timer.performWithDelay(4000,function() declareVictory(playerIndex) end)
+	end
 end	
 
 -- Set variable playerTurn to the next player. Returns false if the next player and the first player are equal (the cicle is complete).
@@ -304,9 +368,9 @@ end
 --------------------------------------------------
 
 function refreshMainHUDText()
-	local text="Jogador "..playerTurn..": "
+	local text="Jogador "..COLORNAMES[playerTurn]..": "
 	
-	textAction = {
+	local textAction = {
 		[CARTA_CACADOR]="",
 		[CARTA_PESCADOR]="Usou seus pássaros para pegar peixes.",
 		[CARTA_PATINADOR]="Usou seus recursos para andar o dobro.",
@@ -314,17 +378,15 @@ function refreshMainHUDText()
 		[CARTA_CORVO]="Escolha de quem irá roubar 2 pássaros ou 1 peixe.",
 		[CARTA_LADRAO]="Escolha de quem irá roubar metade dos recursos"
 	}
-	
-	textStep={
+	local textStep={
 		[STEP_SELECTCARD]="Selecione sua carta.",
 		[STEP_KILLER]="Selecione quem será morto.",
 		[STEP_ACTION]=textAction[players[playerTurn].card],
 		[STEP_MOVE]="Andar?",
 		[STEP_NEWORDER]="Escolha o primeiro jogador do próximo turno."
 	}
-	text=text..textStep[step]
+	local text=text..textStep[step]
 	mainHUDText.text=text
-	mainHUDText.rotation=90
 	-- Displays the right bar
 	for i = 1, playerCount do
 		mainHUDBars[i].isVisible = playerTurn==i
@@ -354,7 +416,10 @@ function removePlayerCard(playerIndex)
 	local oldCard = players[playerIndex].card
 	players[playerIndex].card=0
 	--TODO animation
-	if oldCard>0 then positionNonPlayerCard(oldCard) end
+	if oldCard>0 then 
+		cards[oldCard].x,cards[oldCard].y=nonPlayerCardXY(oldCard) 
+		cards[oldCard].rotation=70
+	end
 end
 
 function positionPlayerCard(playerIndex,cardIndex)
@@ -363,10 +428,10 @@ function positionPlayerCard(playerIndex,cardIndex)
 	cards[cardIndex].rotation=PLAYERSROTATION[playerIndex]
 end
 
-function positionNonPlayerCard(cardIndex)
-	cards[cardIndex].x = 160 + 56 * cardIndex
-	cards[cardIndex].y = 960
-	cards[cardIndex].rotation = -20
+function nonPlayerCardXY(cardIndex)
+	local x = 50
+	local y = 160 + 96 * cardIndex
+	return x,y
 end
 
 function setPlayerBirds(playerIndex, birds)
@@ -397,11 +462,12 @@ function revivePlayer(playerIndex)
 	--TODO animation
 end
 
-function positionPlayerIcon(playerIndex)
+-- Return the player Y based in the boardPosition
+function playerIconY(playerIndex)
 	-- Defines the first and last positions
 	local firstY=820
 	local lastY=420
-	playersIcons[playerIndex].y=firstY-(firstY-lastY)*(players[playerIndex].boardPosition-1)/(DISTANCEGOAL-1)
+	return firstY-(firstY-lastY)*(players[playerIndex].boardPosition-1)/(DISTANCEGOAL-1)
 end
 
 --------------------------------------------------
@@ -427,13 +493,8 @@ function cardTouch (event)
 				if players[playerIndex].card==cardIndex then alreadySelected=true end
 			end
 			if not alreadySelected then
-				setPlayerCard(playerTurn,cardIndex)
-				if nextPlayerTurn() then
-					print("nextPlayerTurn")
-					highlightPlayer(playerTurn)
-				else
-					killChoice()
-				end
+				selectedCard=cardIndex
+				activateDecisionTime()
 			end
 			return true
 		end
@@ -513,4 +574,31 @@ function passTouch (event)
 		end
 	end
 	return true
+end
+
+function confirmTouch (event)
+	if (event.phase == "ended") and decisionTime then
+		if step == STEP_SELECTCARD then
+			setPlayerCard(playerTurn,selectedCard)
+			selectedCard=0
+			deactivateDecisionTime()
+			if nextPlayerTurn() then
+				print("nextPlayerTurn")
+				highlightPlayer(playerTurn)
+			else
+				killChoice()
+			end
+		end		
+		return true
+	end
+end
+
+function cancelTouch (event)
+	if (event.phase == "ended") and decisionTime then
+		if step == STEP_SELECTCARD then
+			selectedCard=0
+			deactivateDecisionTime()
+		end		
+		return true
+	end
 end

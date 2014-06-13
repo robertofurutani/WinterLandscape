@@ -34,7 +34,7 @@ function Player:getHalfBirdsAndFish()
 	local stolenFish=0
 	local totalSelfPoints = self:getPoints()
 	while true do
-		if (stolenFish*2+stolenBirds)*2==totalSelfPoints then
+		if (stolenFish*2+stolenBirds)*2>=totalSelfPoints then
 			break
 		elseif (stolenFish*2+stolenBirds)*2==totalSelfPoints-1 then
 			if stolenBirds < self.birds then
