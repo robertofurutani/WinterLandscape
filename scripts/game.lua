@@ -44,6 +44,7 @@ local firstPlayer=0
 local playerTurn=0
 local step=0
 local selectedCard = 0
+local selectedCardLayerIndex = 0
 local decisionTime = false
 local gameOccurring=false
 local turnNumber=0
@@ -77,12 +78,12 @@ function initializeGame(playersNumber, functionAfterFade)
 		cards[cardIndex] = display.newImageRect( gameLayer, IMGDIR..cardPath, 142, 190 )
 		cards[cardIndex].anchorX = 0.5
 		cards[cardIndex].anchorY = 0.5
-		cards[cardIndex].rotation=70
 		cards[cardIndex]:addEventListener( "touch", cardTouch)
 		
-	    local x, y = nonPlayerCardXY(cardIndex)
+	    local x, y, rotation = nonPlayerCardXYRotation(cardIndex)
 		cards[cardIndex].x=x-150
 		cards[cardIndex].y=y
+		cards[cardIndex].rotation=rotation
 		transition.to(cards[cardIndex], {delay=1000+300*cardCount, time=1200, x=x, y=y, transition=easing.inOutQuad})
 		
 		cardCount=cardCount+1
@@ -323,19 +324,31 @@ end
 
 function activateDecisionTime()
 	decisionTime=true
-	--TODO animation
-	--TODO card positioning
+	decisionBox:activate(playerTurn,"Confirma a seleção da carta?",false)
 	if(selectedCard~=0) then -- Do the card animation
 		--TODO
+		gameLayer:remove(cards[selectedCard])
+		decisionBox:addCard(cards[selectedCard])
 	end
-	decisionBox:activate(playerTurn,"Confirma a seleção da carta?",false)
 end
 
-function deactivateDecisionTime()
+function deactivateDecisionTime(playerIndex)
 	decisionTime=false
-	--TODO animation
-	--TODO card positioning
+	playerIndex = playerIndex or 0 -- 0 acts as no player index
+	if(selectedCard~=0) then -- Do the card animation
+		--TODO
+		local x,y,rotation = 0,0,0
+		if playerIndex==0 then
+			x,y,rotation=nonPlayerCardXYRotation(selectedCard)
+		else
+			x,y,rotation=playerCardXYRotation(playerIndex)
+		end
+		decisionBox:removeCard(x,y,rotation)
+		gameLayer:insert(selectedCardLayerIndex,cards[selectedCard])
+	end
 	decisionBox:deactivate()
+	selectedCard=0
+	selectedCardLayerIndex=0
 end
 
 function movePlayerConsumingResources(playerIndex,double)
@@ -406,32 +419,26 @@ function highlightPlayer(playerIndex)
 	refreshMainHUDText()
 end
 
-function setPlayerCard(playerIndex,card)
-	players[playerIndex].card=card
-	--TODO animation
-	positionPlayerCard(playerIndex,card)
-end
-
 function removePlayerCard(playerIndex)
 	local oldCard = players[playerIndex].card
 	players[playerIndex].card=0
 	--TODO animation
 	if oldCard>0 then 
-		cards[oldCard].x,cards[oldCard].y=nonPlayerCardXY(oldCard) 
-		cards[oldCard].rotation=70
+		cards[oldCard].x,cards[oldCard].y,cards[oldCard].rotation=nonPlayerCardXYRotation(oldCard) 
 	end
 end
 
-function positionPlayerCard(playerIndex,cardIndex)
-	cards[cardIndex].x = ({57, 57, 573, 589, 539})[playerIndex]
-	cards[cardIndex].y = ({777, 0, 0, 315, 816})[playerIndex]
-	cards[cardIndex].rotation=PLAYERSROTATION[playerIndex]
+function playerCardXYRotation(playerIndex)
+	local x = ({57, 57, 573, 589, 539})[playerIndex]
+	local y = ({777, 0, 0, 315, 816})[playerIndex]
+	return x,y,PLAYERSROTATION[playerIndex]
 end
 
-function nonPlayerCardXY(cardIndex)
+function nonPlayerCardXYRotation(cardIndex)
 	local x = 50
 	local y = 160 + 96 * cardIndex
-	return x,y
+	local rotation = 70
+	return x,y,rotation
 end
 
 function setPlayerBirds(playerIndex, birds)
@@ -484,7 +491,7 @@ function cardTouch (event)
 			end
 		end
 	end
-	if cardIndex ~=0 then
+	if cardIndex ~=0 and not decisionTime then
 		-- Selected card options at each step
 		if step == STEP_SELECTCARD then
 			-- Ignores if the card was already selected
@@ -494,6 +501,12 @@ function cardTouch (event)
 			end
 			if not alreadySelected then
 				selectedCard=cardIndex
+				for i =1, gameLayer.numChildren do -- Get the index and store at selectedCardLayerIndex
+					if cards[selectedCard] == gameLayer[i] then
+						selectedCardLayerIndex = i
+						break
+					end
+				end
 				activateDecisionTime()
 			end
 			return true
@@ -511,7 +524,7 @@ function playerTouch (event)
 			end
 		end
 	end
-	if playerIndex ~= 0 then
+	if playerIndex ~= 0 and not decisionTime then
 		-- Selected player option at each step
 		if step == STEP_KILLER then
 			if playerIndex~=playerTurn then  -- Suicide isn't allowed
@@ -579,9 +592,8 @@ end
 function confirmTouch (event)
 	if (event.phase == "ended") and decisionTime then
 		if step == STEP_SELECTCARD then
-			setPlayerCard(playerTurn,selectedCard)
-			selectedCard=0
-			deactivateDecisionTime()
+			players[playerTurn].card=selectedCard
+			deactivateDecisionTime(playerTurn)
 			if nextPlayerTurn() then
 				print("nextPlayerTurn")
 				highlightPlayer(playerTurn)
@@ -596,7 +608,6 @@ end
 function cancelTouch (event)
 	if (event.phase == "ended") and decisionTime then
 		if step == STEP_SELECTCARD then
-			selectedCard=0
 			deactivateDecisionTime()
 		end		
 		return true

@@ -1,3 +1,5 @@
+local Util = require("scripts.util")
+
 DecisionBox = {}
 DecisionBox.__index = DecisionBox
 
@@ -18,6 +20,7 @@ function DecisionBox.create(arrayRotation,colorNames,colorArray,layer,confirmIma
 	object.cancelImage=cancelImage
 	object.cancelImage.x = 0
 	object.cancelImage.y = 180
+	object.cardImage=nil
 	object.titleText=titleText
 	object.titleText.x = 0
 	object.titleText.y = 50
@@ -42,4 +45,18 @@ end
 
 function DecisionBox:deactivate() 
 	transition.to( self.layer, { time=400, alpha=0, transition=easing.inOutQuad })
+end
+
+-- Add a card to the box. The card must be at world position without a layer.
+function DecisionBox:addCard(cardImage)
+	self.cardImage=cardImage
+	Util.addDisplayObjectKeepingPosition(self.cardImage,self.layer)
+	transition.to( self.cardImage, { delay=200, time=400, x=10, y=10, rotation=0, transition=easing.inOutQuad })
+end
+
+-- Remove a card for the box. The card will return at world position without a layer.
+function DecisionBox:removeCard(newX,newY,newRotation)
+	Util.removeDisplayObjectKeepingPosition(self.cardImage,self.layer)
+	transition.to( self.cardImage, { delay=200, time=400, x=newX, y=newY, rotation=newRotation, transition=easing.inOutQuad })
+	self.cardImage=nil
 end
