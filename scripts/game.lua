@@ -5,17 +5,25 @@ local IMGDIR = "images/game/"
 
 local DISTANCEGOAL = 20
 
-local PLAYERSROTATION = {45,135,225,270,315}
-local PLAYERSTEXTCOLOR = {{0.9, 0.9, 0.5},{0.6, 0.6, 1},{1, 0.4, 0.8},{1, 0.6, 0.6},{0.8, 1, 0.6}}
-local COLORNAMES = {"Amarelo","Azul","Rosa","Vermelho", "Verde"}
-local FONT = "Garamond Premier Pro Bold"
-
 local CARTA_CACADOR=1
 local CARTA_PESCADOR=2
 local CARTA_PATINADOR=3
 local CARTA_DIABO=4
 local CARTA_CORVO=5
 local CARTA_LADRAO=6
+
+local PLAYERSROTATION = {45,135,225,270,315}
+local PLAYERSTEXTCOLOR = {{0.9, 0.9, 0.5},{0.6, 0.6, 1},{1, 0.4, 0.8},{1, 0.6, 0.6},{0.8, 1, 0.6}}
+local CARDANIMATIONNAMES = ({
+	[CARTA_CACADOR]="cartaCacadorRotate.png",
+	[CARTA_PESCADOR]="cartaPescadorRotate.png",
+	[CARTA_PATINADOR]="cartaPatinadorRotate.png",
+	[CARTA_DIABO]="cartaDiaboRotate.png",
+	[CARTA_CORVO]="cartaCorvoRotate.png",
+	[CARTA_LADRAO]="cartaLadraoRotate.png",
+})
+local COLORNAMES = {"Amarelo","Azul","Rosa","Vermelho", "Verde"}
+local FONT = "Garamond Premier Pro Bold"
 
 -- GUI
 local playersHUD = {}
@@ -25,8 +33,8 @@ local playersIcons = {}
 local cards = {}
 local mainHUDBars={}
 local mainHUDText=nil
-local passButton=nil
 local deadIcon=nil
+local blackBlock=nil
 local board=nil
 local decisionBox=nil
 
@@ -47,6 +55,7 @@ local selectedCard = 0
 local selectedCardLayerIndex = 0
 local decisionTime = false
 local gameOccurring=false
+local touchTimeout=0
 local turnNumber=0
 
 --------------------------------------------------
@@ -89,15 +98,9 @@ function initializeGame(playersNumber, functionAfterFade)
 		cardCount=cardCount+1
 	end
 	
-	-- Technically this button is only for the moveStep
-	passButton = display.newImageRect( gameLayer, IMGDIR.."botao5p.png", 53, 55 )
-	passButton.x = 825
-	passButton.y = 20
-	passButton:addEventListener( "touch", passTouch)
-	
 	-- Dead Icon
 	deadIcon = display.newImageRect( gameLayer, IMGDIR.."lapide.png", 58, 85 )
-	deadIcon.isVisible = false
+	deadIcon.alpha = 0
 	
 	for i = 1, playerCount do 
 		-- Player HUD
@@ -145,6 +148,11 @@ function initializeGame(playersNumber, functionAfterFade)
 		mainHUDBars.isVisible = false
 	end
 	
+	-- Black block used at decision time
+	blackBlock = display.newRect(gameLayer, 0, 0, 768, 1024)
+	blackBlock:setFillColor(0,0,0)
+	blackBlock.alpha=0
+	
 	-- Main HUD text
 	mainHUDText = display.newText({parent=gameLayer, x=18, y=0, text="",font=FONT, fontSize=32})
 	mainHUDText.y = display.viewableContentHeight/2
@@ -167,6 +175,7 @@ function initializeGame(playersNumber, functionAfterFade)
 	
 	gameOccurring=true
 	firstPlayer=math.random(playerCount)
+	setTouchWaitTime(3500)
 	nextTurn()
 end
 
@@ -174,10 +183,10 @@ end
 function finalizeGame()
 	print("finalizeGame")
 	--board=nil
-	--passButton=nil
 	--mainHUDText=nil
 	--confirmButton=nil
 	--cancelButton=nil
+	--blackBlock=nil
 	decisionBox=nil
 	playersHUDBirds={}
 	playersHUDFish={}
@@ -222,6 +231,14 @@ end
 --- Other functions
 --------------------------------------------------
 
+function setTouchWaitTime(milliseconds)
+	touchTimeout=system.getTimer()+milliseconds
+end
+
+function touchReady() -- Return if touch isn't waiting waitTime
+	return touchTimeout<system.getTimer()
+end
+
 function nextTurn()
 	-- TODO animation for next turn
 	step = STEP_SELECTCARD
@@ -229,7 +246,7 @@ function nextTurn()
 	print("turnNumber="..turnNumber)
 	-- Remove the card and revives everyone
 	for i = 1, playerCount do
-		removePlayerCard(i)
+		if players[i].card>0 then removePlayerCard(i) end
 		if players[i].dead then revivePlayer(i) end
 	end
 	playerTurn=firstPlayer
@@ -291,6 +308,7 @@ function nextAction(firstTurn) -- If firstTurn == true then doesn't calls nextPl
 		print("moveStep STARTED")
 		-- TODO animation for move step
 		highlightPlayer(playerTurn)
+		activateDecisionTime()
 	end
 end
 
@@ -298,12 +316,15 @@ function nextMove()
 	print("nextMove")
 	if not gameOccurring then return end 
 	if nextPlayerTurn() then
-		if players[playerTurn].dead or players[playerTurn].card==CARTA_LADRAO or players[playerTurn].card==CARTA_PATINADOR then
+		if players[playerTurn].dead or players[playerTurn].card==CARTA_LADRAO or players[playerTurn].card==CARTA_PATINADOR or players[playerTurn]:getPoints()==0 then
 			nextMove()
 		else
+			deactivateDecisionTime()
 			highlightPlayer(playerTurn)
+			timer.performWithDelay(1600,activateDecisionTime)
 		end
 	else
+		deactivateDecisionTime()
 		local playerThatDefinesNewOrderIndex = 0
 		for i = 1, playerCount do
 			if players[i].card==CARTA_DIABO then
@@ -324,28 +345,31 @@ end
 
 function activateDecisionTime()
 	decisionTime=true
-	decisionBox:activate(playerTurn,"Confirma a seleção da carta?",false)
+	local delay = 0 
+	decisionBox:activate(playerTurn,(selectedCard==0) and "Andar?" or "Confirma a seleção da carta?")
 	if(selectedCard~=0) then -- Do the card animation
-		--TODO
+		delay = 600 
 		gameLayer:remove(cards[selectedCard])
-		decisionBox:addCard(cards[selectedCard])
+		decisionBox:addCard(cards[selectedCard],IMGDIR..CARDANIMATIONNAMES[selectedCard])
 	end
+	transition.to(blackBlock, {delay=delay, time=400, alpha=0.9, transition=easing.inOutQuad })
 end
 
 function deactivateDecisionTime(playerIndex)
 	decisionTime=false
 	playerIndex = playerIndex or 0 -- 0 acts as no player index
 	if(selectedCard~=0) then -- Do the card animation
-		--TODO
+		delay=1000
 		local x,y,rotation = 0,0,0
 		if playerIndex==0 then
 			x,y,rotation=nonPlayerCardXYRotation(selectedCard)
 		else
 			x,y,rotation=playerCardXYRotation(playerIndex)
 		end
-		decisionBox:removeCard(x,y,rotation)
+		decisionBox:removeCard(x,y,rotation,IMGDIR..CARDANIMATIONNAMES[selectedCard])
 		gameLayer:insert(selectedCardLayerIndex,cards[selectedCard])
 	end
+	transition.to(blackBlock, {time=400, alpha=0, transition=easing.inOutQuad })
 	decisionBox:deactivate()
 	selectedCard=0
 	selectedCardLayerIndex=0
@@ -410,8 +434,6 @@ end
 --- Functions that change visual/player things
 --------------------------------------------------
 
--- Implement these methods at player object ?
-
 -- Highlight the player. When param<1 or there is no param = No Highlight 
 -- Also, refreshes the mainHUDText
 function highlightPlayer(playerIndex)
@@ -423,8 +445,10 @@ function removePlayerCard(playerIndex)
 	local oldCard = players[playerIndex].card
 	players[playerIndex].card=0
 	--TODO animation
-	if oldCard>0 then 
-		cards[oldCard].x,cards[oldCard].y,cards[oldCard].rotation=nonPlayerCardXYRotation(oldCard) 
+	if oldCard>0 then
+		local x, y, rotation = nonPlayerCardXYRotation(oldCard) 
+		transition.to(cards[oldCard], {delay=0, time=400, x=x, y=y, rotation=rotation, transition=easing.inOutQuad })
+		setTouchWaitTime(500)
 	end
 end
 
@@ -459,13 +483,13 @@ function killPlayer(playerIndex)
 	deadIcon.x = ({57, 57, 573, 589, 539})[playerIndex]
 	deadIcon.y = ({777, 0, 0, 315, 816})[playerIndex]
 	deadIcon.rotation=PLAYERSROTATION[playerIndex]
-	deadIcon.isVisible=true
+	transition.to(deadIcon, { time=400, alpha=1, transition=easing.inOutQuad})
 	--TODO animation
 end
 
 function revivePlayer(playerIndex)
 	players[playerIndex].dead=false
-	deadIcon.isVisible=false
+	transition.to(deadIcon, { time=400, alpha=0, transition=easing.inOutQuad})
 	--TODO animation
 end
 
@@ -484,6 +508,7 @@ end
 function cardTouch (event)
 	local cardIndex = 0
 	if (event.phase == "ended") then
+		if not touchReady() then return true end
 		for i = 1, #cards do
 			if (event.target == cards[i]) then
 				cardIndex=i
@@ -507,6 +532,7 @@ function cardTouch (event)
 						break
 					end
 				end
+				setTouchWaitTime(2000)
 				activateDecisionTime()
 			end
 			return true
@@ -517,6 +543,7 @@ end
 function playerTouch (event)
 	local playerIndex = 0
 	if (event.phase == "ended") then
+		if not touchReady() then return true end
 		for i = 1, playerCount do
 			if (event.target == playersHUD[i]) then
 				playerIndex = i
@@ -563,13 +590,6 @@ function playerTouch (event)
 				end
 			end
 			return true
-		elseif step == STEP_MOVE then
-			if playerIndex==playerTurn then
-				movePlayerConsumingResources(playerIndex)
-				-- TODO Maybe this will mess with the animation
-				nextMove()
-			end
-			return true
 		elseif step == STEP_NEWORDER then
 			if playerIndex~=playerTurn then  -- Cannot choose yourself for the first in the next turn
 				firstPlayer=playerIndex
@@ -580,19 +600,12 @@ function playerTouch (event)
 	end
 end
 
-function passTouch (event)
-	if (event.phase == "ended") then
-		if step == STEP_MOVE then
-			nextMove()
-		end
-	end
-	return true
-end
-
 function confirmTouch (event)
 	if (event.phase == "ended") and decisionTime then
+		if not touchReady() then return true end
 		if step == STEP_SELECTCARD then
 			players[playerTurn].card=selectedCard
+			setTouchWaitTime(1000)
 			deactivateDecisionTime(playerTurn)
 			if nextPlayerTurn() then
 				print("nextPlayerTurn")
@@ -600,6 +613,9 @@ function confirmTouch (event)
 			else
 				killChoice()
 			end
+		elseif step == STEP_MOVE then
+			movePlayerConsumingResources(playerTurn)
+			nextMove()
 		end		
 		return true
 	end
@@ -607,8 +623,12 @@ end
 
 function cancelTouch (event)
 	if (event.phase == "ended") and decisionTime then
+		if not touchReady() then return true end
 		if step == STEP_SELECTCARD then
+			setTouchWaitTime(1000)
 			deactivateDecisionTime()
+		elseif step == STEP_MOVE then
+			nextMove()
 		end		
 		return true
 	end

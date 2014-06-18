@@ -15,24 +15,27 @@ function DecisionBox.create(arrayRotation,colorNames,colorArray,layer,confirmIma
 	object.layer=layer
 	object.layer.alpha=0
 	object.confirmImage=confirmImage
-	object.confirmImage.x = 0
-	object.confirmImage.y = 100
+	object.confirmImage.x = 110
+	object.confirmImage.y = 50
 	object.cancelImage=cancelImage
-	object.cancelImage.x = 0
-	object.cancelImage.y = 180
+	object.cancelImage.x = 110
+	object.cancelImage.y = 130
 	object.cardImage=nil
+	object.cardImageWidth=0
+	object.cardImageHeight=0
+	object.animation=nil
 	object.titleText=titleText
-	object.titleText.x = 0
-	object.titleText.y = 50
+	object.titleText.x = 110
+	object.titleText.y = 0
 	object.descriptionText=descriptionText
-	object.descriptionText.x = 0
-	object.descriptionText.y = 70
+	object.descriptionText.x = 110
+	object.descriptionText.y = 20
     return object
 end
 
-function DecisionBox:activate(playerTurn,text,blacktext)
+function DecisionBox:activate(playerTurn,text)
 	local index = playerTurn
-	local colorNumber = blacktext and 1 or 0
+	local colorNumber = 1
 	self.layer.x=self.arrayX[index]
 	self.layer.y=self.arrayX[index]
 	self.layer.rotation = self.arrayRotation[index]
@@ -48,15 +51,32 @@ function DecisionBox:deactivate()
 end
 
 -- Add a card to the box. The card must be at world position without a layer.
-function DecisionBox:addCard(cardImage)
+function DecisionBox:addCard(cardImage,animationPath)
 	self.cardImage=cardImage
+	self.cardImageWidth=cardImage.width
+	self.cardImageHeight=cardImage.height
 	Util.addDisplayObjectKeepingPosition(self.cardImage,self.layer)
-	transition.to( self.cardImage, { delay=200, time=400, x=10, y=10, rotation=0, transition=easing.inOutQuad })
+	transition.to( self.cardImage, { delay=200, time=400, x=0, y=80, rotation=0, transition=easing.inOutQuad })
+	local animationFunction = function()
+		self.animation = criarAnimacao(self.cardImage, animationPath,false)
+		self.layer:insert(self.animation)
+		self.animation:play() 
+	end
+	transition.to( self.cardImage, { delay=600, time=400, width=270, height=369, transition=easing.inOutQuad, onComplete=animationFunction})
 end
 
 -- Remove a card for the box. The card will return at world position without a layer.
-function DecisionBox:removeCard(newX,newY,newRotation)
+function DecisionBox:removeCard(newX,newY,newRotation,animationPath)
 	Util.removeDisplayObjectKeepingPosition(self.cardImage,self.layer)
-	transition.to( self.cardImage, { delay=200, time=400, x=newX, y=newY, rotation=newRotation, transition=easing.inOutQuad })
-	self.cardImage=nil
+	self.animation:removeSelf()
+	self.animation = criarAnimacao(self.cardImage, animationPath,true)
+	self.animation:play() 
+	local destroyAnimation = function()
+		self.cardImage.isVisible=true
+		transition.to( self.cardImage, {time=400, width=self.cardImageWidth, height=self.cardImageHeight, x=newX, y=newY, rotation=newRotation, transition=easing.inOutQuad})
+		self.animation:removeSelf()
+		self.animation=nil
+		self.cardImage=nil
+	end
+	timer.performWithDelay(1000,destroyAnimation)
 end
