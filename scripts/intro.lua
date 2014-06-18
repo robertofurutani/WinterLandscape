@@ -55,48 +55,48 @@ function inicializar()
 
 	--Botoes e suas transições
 	local botao1p = display.newImageRect( botoesLayers, IMGDIR.."botao1p.png", 55, 53 )
-	botao1p.x = 400
+	botao1p.x = 310
 	botao1p.y = 625
 	transFade (botao1p, 800, 2000)
 	botao1p.id = "botao1p"
 
 	local botao2p = display.newImageRect( botoesLayers, IMGDIR.."botao2p.png", 55, 53 )
-	botao2p.x = 400
+	botao2p.x = 310
 	botao2p.y = 675
 	transFade (botao2p, 1000, 2000)
 	botao2p.id = "botao2p"
 
 
 	local botao3p = display.newImageRect( botoesLayers, IMGDIR.."botao3p.png", 55, 68 )
-	botao3p.x = 402 
+	botao3p.x = 312 
 	botao3p.y = 740
 	transFade (botao3p, 1200, 2000)
 	botao3p.id = "botao3p"
 
 
 	local botao4p = display.newImageRect( botoesLayers, IMGDIR.."botao4p.png", 55, 68 )
-	botao4p.x = 402
+	botao4p.x = 312
 	botao4p.y = 830
 	transFade (botao4p, 1400, 2000)
 	botao4p.id = "botao4p"
 
 
 	local botao5p = display.newImageRect( botoesLayers, IMGDIR.."botao5p.png", 55, 68 )
-	botao5p.x = 401
+	botao5p.x = 311
 	botao5p.y = 910
 	transFade (botao5p, 1600, 2500)
 	botao5p.id = "botao5p"
 
 
 	local botaoCredito = display.newImageRect( botoesLayers, IMGDIR.."botaoCredito.png", 48, 185)
-	botaoCredito.x = 720
+	botaoCredito.x = 0
 	botaoCredito.y = 130 
 	transFade (botaoCredito, 1800, 2000)
 	botaoCredito.id = "botaoCredito"
 
 
 	local botaoComo = display.newImageRect( botoesLayers, IMGDIR.."botaoComo.png", 48, 185 )
-	botaoComo.x = 720
+	botaoComo.x = 0
 	botaoComo.y = 300
 	transFade (botaoComo, 1800, 2000)
 	botaoComo.id = "botaoComo"
@@ -118,25 +118,21 @@ function tapBotao1p()
 end
 
 function tapBotao2p ()
-  print ("Botao 2 pressionado")
 	esconderMenu()
 	initializeGame(2,esconderMenu)
 end
 
 function tapBotao3p ()
-print ("Botao 3 pressionado")
 	esconderMenu()
 	initializeGame(3,esconderMenu)
 end
 
 function tapBotao4p ()
-print ("Botao 4 pressionado")
 	esconderMenu()
 	initializeGame(4,esconderMenu)
 end
 
 function tapBotao5p ()
-print ("Botao 5 pressionado")
 	esconderMenu()
 	initializeGame(5,esconderMenu)
 end
@@ -164,7 +160,6 @@ function mostrarComoJogar()
 	btVoltar.id = "btVoltar"
 	transFade( imgComoJogar, 0, 500, esconderMenu)
 	transFade( btVoltar, 0, 500)
-	print("mostrarComoJogar")
 	btVoltar:addEventListener( "touch", mostrarMenu)
 end
 
