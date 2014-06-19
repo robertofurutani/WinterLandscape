@@ -10,7 +10,11 @@ settings =
 	{
 		plist = 
 		{
-		UIStatusBarHidden = true,
+			UIAppFonts =
+            {
+                "GaramondPremrPro.otf"
+            }
+			UIStatusBarHidden = true,
 		},
 	},
 }

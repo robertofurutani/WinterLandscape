@@ -23,7 +23,7 @@ local CARDANIMATIONNAMES = ({
 	[CARTA_LADRAO]="cartaLadraoRotate.png",
 })
 local COLORNAMES = {"Amarelo","Azul","Rosa","Vermelho", "Verde"}
-local FONT = "Garamond Premier Pro Bold"
+local FONT = "Garamond Premr Pro"
 
 -- GUI
 local playersHUD = {}
@@ -174,6 +174,8 @@ function initializeGame(playersNumber, functionAfterFade)
 	transFade( gameLayer, 0, 3000, functionAfterFade)
 	
 	gameOccurring=true
+	
+	AudioUtil.playBGM("sound_inGame.mp3")
 	firstPlayer=math.random(playerCount)
 	setTouchWaitTime(3500)
 	nextTurn()
@@ -181,18 +183,18 @@ end
 
 -- Remove all images, restart the layer and going back to the menu screen
 function finalizeGame()
-	print("finalizeGame")
 	--board=nil
 	--mainHUDText=nil
 	--confirmButton=nil
 	--cancelButton=nil
 	--blackBlock=nil
-	decisionBox=nil
 	playersHUDBirds={}
 	playersHUDFish={}
 	playersHUD={}
 	playersIcons={}
 	cards={}
+	decisionBox:finalize()
+	decisionBox=nil
 	gameLayer:removeSelf()
 	gameLayer=nil
 	
@@ -209,6 +211,7 @@ end
 
 function declareVictory(playerIndex)
 	finalizeGame()
+	AudioUtil.playBGM("sound_success.mp3")
 	victoryLayer = display.newGroup()
 	local victoryScreen = display.newImageRect( victoryLayer, IMGDIR.."victoryscreen.jpg", 768, 1024 )
 	local text = "Vitória do Jogador "..COLORNAMES[playerIndex].."!"
@@ -222,7 +225,8 @@ function declareVictory(playerIndex)
 			victoryLayer:removeSelf()
 			victoryLayer=nil
 		end
-		mostrarMenu()
+		audio.fadeOut({channel=0})
+		mostrarIntro()
 	end
 	transFade (victoryLayer, 0, 1000,function() victoryLayer:addEventListener( "touch",restart); end)
 end
@@ -243,7 +247,6 @@ function nextTurn()
 	-- TODO animation for next turn
 	step = STEP_SELECTCARD
 	turnNumber=turnNumber+1
-	print("turnNumber="..turnNumber)
 	-- Remove the card and revives everyone
 	for i = 1, playerCount do
 		if players[i].card>0 then removePlayerCard(i) end
@@ -258,10 +261,9 @@ function killChoice()
 	for i = 1, playerCount do
 		if players[i].card==CARTA_DIABO then
 			step = STEP_KILLER
+			AudioUtil.playBGM("sound_gameOver.mp3")
 			playerTurn=i
 			highlightPlayer(playerTurn)
-			-- TODO show a message like "Kill someone"
-			print("Kill someone")
 			return
 		end
 	end
@@ -274,16 +276,13 @@ function initializeActionTurn()
 		birdsReceived = (players[i].card==CARTA_CACADOR and not players[i].dead) and 2 or 1 
 		setPlayerBirds(i,players[i].birds+birdsReceived)
 	end
-	print("Resource gain step (birds)")
 	--TODO animation
 	step = STEP_ACTION
-	print("actionStep STARTED")
 	nextAction(true)
 end
 
 function nextAction(firstTurn) -- If firstTurn == true then doesn't calls nextPlayerTurn
 	firstTurn = false or firstTurn
-	print("nextAction"..(firstTurn and "true" or "false"))
 	if not gameOccurring then return end 
 	if firstTurn or nextPlayerTurn() then
 		if (players[playerTurn].card==CARTA_LADRAO or players[playerTurn].card==CARTA_CORVO) and not players[playerTurn].dead then
@@ -305,7 +304,6 @@ function nextAction(firstTurn) -- If firstTurn == true then doesn't calls nextPl
 		end
 	else
 		step = STEP_MOVE
-		print("moveStep STARTED")
 		-- TODO animation for move step
 		highlightPlayer(playerTurn)
 		activateDecisionTime()
@@ -313,7 +311,6 @@ function nextAction(firstTurn) -- If firstTurn == true then doesn't calls nextPl
 end
 
 function nextMove()
-	print("nextMove")
 	if not gameOccurring then return end 
 	if nextPlayerTurn() then
 		if players[playerTurn].dead or players[playerTurn].card==CARTA_LADRAO or players[playerTurn].card==CARTA_PATINADOR or players[playerTurn]:getPoints()==0 then
@@ -338,12 +335,12 @@ function nextMove()
 			step = STEP_NEWORDER
 			playerTurn=playerThatDefinesNewOrderIndex
 			highlightPlayer(playerTurn)
-			print("Choose the next first player")
 		end
 	end
 end
 
 function activateDecisionTime()
+	if not gameOccurring then return end 
 	decisionTime=true
 	local delay = 0 
 	decisionBox:activate(playerTurn,(selectedCard==0) and "Andar?" or "Confirma a seleção da carta?")
@@ -356,6 +353,7 @@ function activateDecisionTime()
 end
 
 function deactivateDecisionTime(playerIndex)
+	if not gameOccurring then return end 
 	decisionTime=false
 	playerIndex = playerIndex or 0 -- 0 acts as no player index
 	if(selectedCard~=0) then -- Do the card animation
@@ -386,7 +384,6 @@ end
 -- Only checks victory conditions and plays the animation
 function movePlayerEffects(playerIndex,distance)
 	transition.to(playersIcons[playerIndex], {y=playerIconY(playerIndex), time=800, transition=easing.inOutQuad, onComplete=animacaoCompleta})
-	players[playerIndex]:printStatus() -- Debug purposes
 	if(players[playerIndex].boardPosition>=DISTANCEGOAL) then 
 		gameOccurring=false
 		timer.performWithDelay(4000,function() declareVictory(playerIndex) end)
@@ -395,7 +392,6 @@ end
 
 -- Set variable playerTurn to the next player. Returns false if the next player and the first player are equal (the cicle is complete).
 function nextPlayerTurn()
-	print("extPlayerTurn()")
 	playerTurn = playerTurn==playerCount and 1 or playerTurn+1
 	return ( firstPlayer ~= playerTurn )
 end
@@ -479,6 +475,9 @@ end
 
 function killPlayer(playerIndex)
 	players[playerIndex].dead=true
+	AudioUtil.playSE("Die")
+	timer.performWithDelay(1200,function() AudioUtil.playBGM("sound_inGame.mp3") end)
+	setTouchWaitTime(3500)
 	-- Change the only icon position, since only only one player can be dead per turn
 	deadIcon.x = ({57, 57, 573, 589, 539})[playerIndex]
 	deadIcon.y = ({777, 0, 0, 315, 816})[playerIndex]
@@ -496,9 +495,11 @@ end
 -- Return the player Y based in the boardPosition
 function playerIconY(playerIndex)
 	-- Defines the first and last positions
-	local firstY=820
-	local lastY=420
-	return firstY-(firstY-lastY)*(players[playerIndex].boardPosition-1)/(DISTANCEGOAL-1)
+	local firstY=720
+	local lastY=320
+	local boardPosition = players[playerIndex].boardPosition
+	if boardPosition>DISTANCEGOAL then boardPosition=DISTANCEGOAL end -- precaution
+	return firstY-(firstY-lastY)*(boardPosition-1)/(DISTANCEGOAL-1)
 end
 
 --------------------------------------------------
@@ -608,7 +609,6 @@ function confirmTouch (event)
 			setTouchWaitTime(1000)
 			deactivateDecisionTime(playerTurn)
 			if nextPlayerTurn() then
-				print("nextPlayerTurn")
 				highlightPlayer(playerTurn)
 			else
 				killChoice()

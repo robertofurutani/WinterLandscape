@@ -37,7 +37,7 @@ function DecisionBox:activate(playerTurn,text)
 	local index = playerTurn
 	local colorNumber = 1
 	self.layer.x=self.arrayX[index]
-	self.layer.y=self.arrayX[index]
+	self.layer.y=self.arrayY[index]
 	self.layer.rotation = self.arrayRotation[index]
 	self.titleText.text="Jogador "..self.colorNames[index]..":"
 	self.titleText:setFillColor(self.colorArray[index][1],self.colorArray[index][2],self.colorArray[index][3])
@@ -79,4 +79,8 @@ function DecisionBox:removeCard(newX,newY,newRotation,animationPath)
 		self.cardImage=nil
 	end
 	timer.performWithDelay(1000,destroyAnimation)
+end
+
+function DecisionBox:finalize()
+	self.layer:removeSelf()
 end
