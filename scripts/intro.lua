@@ -1,5 +1,6 @@
 require("scripts.efeitos")
 require("scripts.game")
+AudioUtil = require("scripts.audioUtil")
 
 local IMGDIR = "images/intro/"
 
@@ -35,6 +36,11 @@ end
 
 
 --BG  do Menu
+function mostrarIntro()
+	timer.performWithDelay(2400,function() AudioUtil.playBGM("sound_splashScreen.mp3",0) end)
+	mostrarMenu()
+end
+
 function mostrarMenu()
 	bgCredito.alpha = 0
 	bgComoJogar.alpha = 0
@@ -43,7 +49,7 @@ function mostrarMenu()
 end
 
 function inicializar()
-	mostrarMenu()
+	mostrarIntro()
 
 	local background = display.newImageRect( bg,IMGDIR.."bg.png", 768, 1024)
 	
