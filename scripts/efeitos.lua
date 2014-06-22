@@ -1,11 +1,7 @@
 --Efeitos de transição
 function transFade (item, delay, tempo, funcOnComplete )
-	 item.alpha=0
-	 if funcOnComplete then
-		transition.to( item, {delay=delay, time=tempo, alpha=1, transition=easing.inOutQuad, onComplete=funcOnComplete })
-	 else
-		transition.to( item, {delay=delay, time=tempo, alpha=1, transition=easing.inOutQuad })
-	 end
+	item.alpha=0
+	transition.to( item, {delay=delay, time=tempo, alpha=1, transition=easing.inOutQuad, onComplete=funcOnComplete })
 end
 
 function criarAnimacao(cardImage, path, reversed)

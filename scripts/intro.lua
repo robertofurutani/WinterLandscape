@@ -13,8 +13,6 @@ display.setDefault( "anchorY", 0.0 )
 -- Definição dos display groups (camadas)
 bg = display.newGroup()
 botoesLayers = display.newGroup()
-gameLayer = nil
-victoryLayer = nil
 bgCredito = display.newGroup()
 bgComoJogar = display.newGroup()
 
