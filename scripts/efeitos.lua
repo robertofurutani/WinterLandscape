@@ -8,7 +8,6 @@ function criarAnimacao(cardImage, path, reversed)
 	reversed = reversed or false
 	local frameCount = 35
     local sheetData = { width=270, height=382, numFrames=frameCount, sheetContentWidth=9450, sheetContentHeight=382 }
-    print("path="..path)
     
     local mySheet = graphics.newImageSheet( path, sheetData )
 
