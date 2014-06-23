@@ -1,9 +1,10 @@
 require("scripts.player")
 require("scripts.decisionBox")
+local Util = require("scripts.util")
 
 local IMGDIR = "images/game/"
 
-local DISTANCEGOAL = 20
+local DISTANCEGOAL = 10
 
 local CARTA_CACADOR=1
 local CARTA_PESCADOR=2
@@ -25,14 +26,25 @@ local CARDANIMATIONNAMES = ({
 local COLORNAMES = {"Amarelo","Azul","Rosa","Vermelho", "Verde"}
 local FONT = "Garamond Premr Pro"
 
+-- Layers
+local boardLayer = nil
+local playersLayer = nil
+local cardsLayer = nil
+local hudLayer = nil
+local messageLayer = nil
+
+local layers = {}
+
 -- GUI
 local playersHUD = {}
 local playersHUDBirds = {}
 local playersHUDFish = {}
 local playersIcons = {}
 local cards = {}
-local mainHUDBars={}
-local mainHUDText=nil
+local mainBars={}
+local mainBarText=nil
+local mainMessageText=nil
+local subMessageText=nil
 local deadIcon=nil
 local blackBlock=nil
 local board=nil
@@ -50,6 +62,7 @@ local playerCount = 0
 local players = {}
 local firstPlayer=0
 local playerTurn=0
+local stolenPlayer=0 -- For message
 local step=0
 local selectedCard = 0
 local selectedCardLayerIndex = 0
@@ -63,15 +76,26 @@ local turnNumber=0
 --------------------------------------------------
 
 function initializeGame(playersNumber, functionAfterFade)
-	playerCount = playersNumber
+	playerCount = playersNumber==1 and 5 or playersNumber -- When 1 is selected, is a 5 player game with bots
 	
 	-- Initialize player objects
 	for i = 1, playerCount do
-		players[i]=Player.create(i)
+		local isBot = (playersNumber==1 and i~=1) and true or false
+		players[i]=Player.create(i,isBot)
 	end
 	
-	gameLayer=display.newGroup()
-	board = display.newImageRect( gameLayer,IMGDIR.."tabuleiro.png", 760, 1024)
+	boardLayer=display.newGroup()
+	playersLayer=display.newGroup()
+	cardsLayer=display.newGroup()
+	hudLayer=display.newGroup()
+	blockLayer=display.newGroup() -- All below this layer cannot be visible when the black block is active
+	featuredLayer=display.newGroup() -- A visible layer when black block is active
+	barLayer=display.newGroup()
+	messageLayer=display.newGroup()
+	
+	layers = {boardLayer,playersLayer,cardsLayer,hudLayer,blockLayer,featuredLayer,barLayer,messageLayer}
+	
+	board = display.newImageRect( boardLayer,IMGDIR.."tabuleiro.png", 760, 1024)
 	
 	-- Cards image
 	local cardCount=1
@@ -84,7 +108,7 @@ function initializeGame(playersNumber, functionAfterFade)
 			[CARTA_CORVO]="cartaCorvoFrente.png",
 			[CARTA_LADRAO]="cartaLadraoFrente.png",
 		})[cardIndex] 
-		cards[cardIndex] = display.newImageRect( gameLayer, IMGDIR..cardPath, 142, 190 )
+		cards[cardIndex] = display.newImageRect( cardsLayer, IMGDIR..cardPath, 142, 190 )
 		cards[cardIndex].anchorX = 0.5
 		cards[cardIndex].anchorY = 0.5
 		cards[cardIndex]:addEventListener( "touch", cardTouch)
@@ -99,13 +123,13 @@ function initializeGame(playersNumber, functionAfterFade)
 	end
 	
 	-- Dead Icon
-	deadIcon = display.newImageRect( gameLayer, IMGDIR.."lapide.png", 58, 85 )
+	deadIcon = display.newImageRect( hudLayer, IMGDIR.."lapide.png", 58, 85 )
 	deadIcon.alpha = 0
 	
 	for i = 1, playerCount do 
 		-- Player HUD
-		local playersHUDPath = ({"player1Hud.png","player2Hud.png","player3Hud.png","player4Hud.png","player5Hud.png"})[i]
-		playersHUD[i] = display.newImageRect( gameLayer, IMGDIR..playersHUDPath, ({208, 239, 207, 91, 241})[i], ({247, 209, 240, 394, 208})[i])
+		local playersHUDPath = ({"playerAmareloHud.png","playerAzulHud.png","playerRosaHud.png","playerVermelhoHud.png","playerVerdeHud.png"})[i]
+		playersHUD[i] = display.newImageRect( hudLayer, IMGDIR..playersHUDPath, ({208, 239, 207, 91, 241})[i], ({247, 209, 240, 394, 208})[i])
 		local hudFinalX = ({37, 37, 553, 669, 519})[i]
 		local hudFinalY = ({777, 0, 0, 315, 816})[i]
 		local hudWidth = playersHUD[i].width
@@ -117,7 +141,7 @@ function initializeGame(playersNumber, functionAfterFade)
 		playersHUD[i]:addEventListener( "touch", playerTouch)
 		
 		-- Birds counter
-		playersHUDBirds[i] = display.newText({parent=gameLayer, text="0",font=FONT, fontSize=22})
+		playersHUDBirds[i] = display.newText({parent=hudLayer, text="0",font=FONT, fontSize=22})
 		playersHUDBirds[i].x = ({57, 57, 573, 589, 539})[i]
 		playersHUDBirds[i].y = ({777, 0, 0, 315, 816})[i]
 		playersHUDBirds[i]:setFillColor(PLAYERSTEXTCOLOR[i][1],PLAYERSTEXTCOLOR[i][2],PLAYERSTEXTCOLOR[i][3])
@@ -127,7 +151,7 @@ function initializeGame(playersNumber, functionAfterFade)
 		transition.to ( playersHUDBirds[i], { delay=5000, time=2000, alpha=1, transition=easing.inOutQuad})
 		
 		-- Fish counter
-		playersHUDFish[i] = display.newText({parent=gameLayer, text="0",font=FONT, fontSize=22})
+		playersHUDFish[i] = display.newText({parent=hudLayer, text="0",font=FONT, fontSize=22})
 		playersHUDFish[i].x = ({67, 67, 583, 599, 549})[i]
 		playersHUDFish[i].y = ({777, 0, 0, 315, 816})[i]
 		playersHUDFish[i]:setFillColor(PLAYERSTEXTCOLOR[i][1],PLAYERSTEXTCOLOR[i][2],PLAYERSTEXTCOLOR[i][3])
@@ -137,32 +161,40 @@ function initializeGame(playersNumber, functionAfterFade)
 		transition.to ( playersHUDFish[i], { delay=5000, time=2000, alpha=1, transition=easing.inOutQuad})
 		
 		-- Players Icons
-		local playersIconsPath = ({"playerYellow.png","playerBlue.png","playerPink.png","playerRed.png","playerGreen.png"})[i] 
-		playersIcons[i] = display.newImageRect( gameLayer, IMGDIR..playersIconsPath, 19, 35 )
-		playersIcons[i].x = ({300, 325, 350, 375, 400})[i]
+		local playersIconsPath = ({"playerAmarelo.png","playerAzul.png","playerRosa.png","playerVermelho.png","playerVerde.png"})[i] 
+		playersIcons[i] = display.newImageRect( playersLayer, IMGDIR..playersIconsPath, 54, 98 )
+		playersIcons[i].x = ({340, 380, 420, 460, 500})[i]
 		playersIcons[i].y = playerIconY(i)
 		
 		-- Draw all bar at the same positions, but only the right one will be visible
-		local mainHUDBarsPaths = {"barraYellow.png","barraBlue.png","barraPink.png","barraRed.png","barraGreen.png"}
-		mainHUDBars[i] = display.newImageRect( gameLayer, IMGDIR..mainHUDBarsPaths[i], 760, 1024 )
-		mainHUDBars.isVisible = false
+		local mainBarsPaths = {"barraYellow.png","barraBlue.png","barraPink.png","barraRed.png","barraGreen.png"}
+		mainBars[i] = display.newImageRect( barLayer, IMGDIR..mainBarsPaths[i], 760, 1024 )
+		mainBars.isVisible = false
 	end
 	
 	-- Black block used at decision time
-	blackBlock = display.newRect(gameLayer, 0, 0, 768, 1024)
+	blackBlock = display.newRect(blockLayer, 0, 0, 768, 1024)
 	blackBlock:setFillColor(0,0,0)
 	blackBlock.alpha=0
 	
 	-- Main HUD text
-	mainHUDText = display.newText({parent=gameLayer, x=18, y=0, text="",font=FONT, fontSize=32})
-	mainHUDText.y = display.viewableContentHeight/2
-	mainHUDText.anchorX = 0.5
-	mainHUDText.anchorY = 0.5
-	mainHUDText.rotation = 90	
+	mainBarText = display.newText({parent=barLayer, x=18, y=display.viewableContentHeight/2, text="",font=FONT, fontSize=32})
+	mainBarText.anchorX = 0.5
+	mainBarText.anchorY = 0.5
+	mainBarText.rotation = 90	
+	
+	mainMessageText = display.newText({parent=messageLayer, x=display.viewableContentWidth/2+20, y=display.viewableContentHeight/2, text="",font=FONT, fontSize=50})
+	mainMessageText.anchorX = 0.5
+	mainMessageText.anchorY = 0.5
+	mainMessageText.rotation = 90	
+	
+	subMessageText = display.newText({parent=messageLayer, x=display.viewableContentWidth/2-20, y=display.viewableContentHeight/2, text="",font=FONT, fontSize=18})
+	subMessageText.anchorX = 0.5
+	subMessageText.anchorY = 0.5
+	subMessageText.rotation = 90	
 	
 	-- Decision Box
 	local decisionBoxLayer = display.newGroup()
-	gameLayer:insert( decisionBoxLayer )
 	local confirmButton = display.newImageRect( decisionBoxLayer, IMGDIR.."botaoConfirmar.png", 97, 97 )
 	local cancelButton = display.newImageRect( decisionBoxLayer, IMGDIR.."botaoRecusar.png", 97, 97 )
 	confirmButton:addEventListener( "touch", confirmTouch)
@@ -171,23 +203,23 @@ function initializeGame(playersNumber, functionAfterFade)
 	local descriptionText = display.newText({parent=decisionBoxLayer, text="",font=FONT, fontSize=16})
 	decisionBox = DecisionBox.create(PLAYERSROTATION,COLORNAMES,PLAYERSTEXTCOLOR,decisionBoxLayer,confirmButton,cancelButton,titleText,descriptionText)	
 	
-	transFade( gameLayer, 0, 3000, functionAfterFade)
+	-- Fade all layers and execute functionAfterFade after fade
+	local delay=3000
+	for i=1, #layers do
+		transFade( layers[i], 0, delay)
+	end
+	timer.performWithDelay(delay,functionAfterFade)
 	
 	gameOccurring=true
 	
 	AudioUtil.playBGM("sound_inGame.mp3")
 	firstPlayer=math.random(playerCount)
-	setTouchWaitTime(3500)
-	nextTurn()
+	setTouchWaitTime(delay+1600)
+	timer.performWithDelay(delay+1600,nextTurn)
 end
 
 -- Remove all images, restart the layer and going back to the menu screen
 function finalizeGame()
-	--board=nil
-	--mainHUDText=nil
-	--confirmButton=nil
-	--cancelButton=nil
-	--blackBlock=nil
 	playersHUDBirds={}
 	playersHUDFish={}
 	playersHUD={}
@@ -195,8 +227,10 @@ function finalizeGame()
 	cards={}
 	decisionBox:finalize()
 	decisionBox=nil
-	gameLayer:removeSelf()
-	gameLayer=nil
+	for i=1, #layers do
+		layers[i]:removeSelf()
+	end
+	layers={}
 	
 	playerCount = 0
 	players = {}
@@ -210,25 +244,16 @@ end
 
 
 function declareVictory(playerIndex)
-	finalizeGame()
 	AudioUtil.playBGM("sound_success.mp3")
-	victoryLayer = display.newGroup()
-	local victoryScreen = display.newImageRect( victoryLayer, IMGDIR.."victoryscreen.jpg", 768, 1024 )
-	local text = "Vitória do Jogador "..COLORNAMES[playerIndex].."!"
-	local victoryText = display.newText({parent=victoryLayer, x=100, y=100, text=text,font=FONT, fontSize=32})
-	victoryText.anchorY = 0.5
-	victoryText.rotation = 90
-	victoryText:setFillColor(0,0,0) 
-	
+	-- An empty block just for doing a touch listenet on the entire screen
+	display.newRect(messageLayer, 0, 0, 768, 1024).alpha=0.01
+	showStepMessage(nil,playerIndex)
 	local restart = function() 
-		if victoryLayer then
-			victoryLayer:removeSelf()
-			victoryLayer=nil
-		end
+		finalizeGame()
 		audio.fadeOut({channel=0})
 		mostrarIntro()
 	end
-	transFade (victoryLayer, 0, 1000,function() victoryLayer:addEventListener( "touch",restart); end)
+	timer.performWithDelay(400,function() messageLayer:addEventListener( "touch",restart) end)
 end
 
 --------------------------------------------------
@@ -236,6 +261,7 @@ end
 --------------------------------------------------
 
 function setTouchWaitTime(milliseconds)
+	print("setTouchWaitTime milliseconds="..milliseconds)
 	touchTimeout=system.getTimer()+milliseconds
 end
 
@@ -244,16 +270,20 @@ function touchReady() -- Return if touch isn't waiting waitTime
 end
 
 function nextTurn()
-	-- TODO animation for next turn
 	step = STEP_SELECTCARD
 	turnNumber=turnNumber+1
-	-- Remove the card and revives everyone
-	for i = 1, playerCount do
-		if players[i].card>0 then removePlayerCard(i) end
-		if players[i].dead then revivePlayer(i) end
-	end
 	playerTurn=firstPlayer
 	highlightPlayer(playerTurn)
+	local after = function() -- Remove card, revive everyone and show step text
+		local delay=400
+		setTouchWaitTime(delay)
+		for i = 1, playerCount do
+			if players[i].card>0 then removePlayerCard(i) end
+			if players[i].dead then revivePlayer(i) end
+		end
+		timer.performWithDelay(delay,function() showStepMessage(nil,nil,aiCommand) end)
+	end
+	showStepMessage(turnNumber,nil,after)
 end
 
 -- If a player have the right card, he call kill someone. Else go to the next step. Return if there is a killer among us
@@ -264,10 +294,12 @@ function killChoice()
 			AudioUtil.playBGM("sound_gameOver.mp3")
 			playerTurn=i
 			highlightPlayer(playerTurn)
+			timer.performWithDelay(1000,function() showStepMessage(nil,nil,function() aiCommand(nil,3000) end) end) -- Extra delay time for music
 			return
 		end
 	end
-	initializeActionTurn()
+	step = STEP_ACTION
+	timer.performWithDelay(1000,function() showStepMessage(nil,nil,initializeActionTurn) end)
 end
 
 function initializeActionTurn()
@@ -276,38 +308,42 @@ function initializeActionTurn()
 		birdsReceived = (players[i].card==CARTA_CACADOR and not players[i].dead) and 2 or 1 
 		setPlayerBirds(i,players[i].birds+birdsReceived)
 	end
-	--TODO animation
-	step = STEP_ACTION
 	nextAction(true)
 end
 
 function nextAction(firstTurn) -- If firstTurn == true then doesn't calls nextPlayerTurn
 	firstTurn = false or firstTurn
 	if not gameOccurring then return end 
+	stolenPlayer=0
 	if firstTurn or nextPlayerTurn() then
 		if (players[playerTurn].card==CARTA_LADRAO or players[playerTurn].card==CARTA_CORVO) and not players[playerTurn].dead then
 			-- If the player need a target selection
 			highlightPlayer(playerTurn)
+			print("Time left="..touchTimeout-system.getTimer())
+			aiCommand(nil,2000)
 		elseif not players[playerTurn].dead and (players[playerTurn].card==CARTA_PATINADOR or players[playerTurn].card==CARTA_PESCADOR) then
 			if players[playerTurn].card==CARTA_PESCADOR then	-- Transform bird into fish !
 				setPlayerFish(playerTurn,players[playerTurn].fish+players[playerTurn].birds)
 				setPlayerBirds(playerTurn,0)
-				-- TODO Maybe this will mess with the animation
 			elseif players[playerTurn].card==CARTA_PATINADOR then
 				movePlayerConsumingResources(playerTurn, true)
 			end
 			if not gameOccurring then return end 
 			highlightPlayer(playerTurn)
-			timer.performWithDelay(2000,function() nextAction();end)
+			timer.performWithDelay(4000,function() nextAction();end)
 		else	
 			nextAction()
 		end
 	else
 		step = STEP_MOVE
-		-- TODO animation for move step
 		highlightPlayer(playerTurn)
-		activateDecisionTime()
+		showStepMessage(nil, nil, activatesMoveSelection)
 	end
+end
+
+function activatesMoveSelection()
+	timer.performWithDelay(1600,activateDecisionTime)
+	aiCommand(nil,2800)
 end
 
 function nextMove()
@@ -318,7 +354,7 @@ function nextMove()
 		else
 			deactivateDecisionTime()
 			highlightPlayer(playerTurn)
-			timer.performWithDelay(1600,activateDecisionTime)
+			activatesMoveSelection()
 		end
 	else
 		deactivateDecisionTime()
@@ -335,6 +371,7 @@ function nextMove()
 			step = STEP_NEWORDER
 			playerTurn=playerThatDefinesNewOrderIndex
 			highlightPlayer(playerTurn)
+			aiCommand(nil,400)
 		end
 	end
 end
@@ -346,7 +383,7 @@ function activateDecisionTime()
 	decisionBox:activate(playerTurn,(selectedCard==0) and "Andar?" or "Confirma a seleção da carta?")
 	if(selectedCard~=0) then -- Do the card animation
 		delay = 600 
-		gameLayer:remove(cards[selectedCard])
+		cardsLayer:remove(cards[selectedCard])
 		decisionBox:addCard(cards[selectedCard],IMGDIR..CARDANIMATIONNAMES[selectedCard])
 	end
 	transition.to(blackBlock, {delay=delay, time=400, alpha=0.9, transition=easing.inOutQuad })
@@ -365,7 +402,11 @@ function deactivateDecisionTime(playerIndex)
 			x,y,rotation=playerCardXYRotation(playerIndex)
 		end
 		decisionBox:removeCard(x,y,rotation,IMGDIR..CARDANIMATIONNAMES[selectedCard])
-		gameLayer:insert(selectedCardLayerIndex,cards[selectedCard])
+		if playerIndex==0 then
+			cardsLayer:insert(selectedCardLayerIndex,cards[selectedCard])
+		else
+			playersLayer:insert(selectedCardLayerIndex,cards[selectedCard])
+		end
 	end
 	transition.to(blackBlock, {time=400, alpha=0, transition=easing.inOutQuad })
 	decisionBox:deactivate()
@@ -397,10 +438,118 @@ function nextPlayerTurn()
 end
 
 --------------------------------------------------
---- Main text HUD
+--- Functions that change visual/player things
 --------------------------------------------------
 
-function refreshMainHUDText()
+-- Highlight the player. When param<1 or there is no param = No Highlight 
+-- Also, refreshes the mainBarText
+function highlightPlayer(playerIndex)
+	-- Only refreshes the mainBarText now.
+	refreshmainBarText()
+end
+
+function removePlayerCard(playerIndex)
+	local oldCard = players[playerIndex].card
+	players[playerIndex].card=0
+	if oldCard>0 then
+		cardsLayer:insert(cards[oldCard])
+		local x, y, rotation = nonPlayerCardXYRotation(oldCard) 
+		transition.to(cards[oldCard], {time=400, x=x, y=y, rotation=rotation, transition=easing.inOutQuad })
+		setTouchWaitTime(400)
+	end
+end
+
+function playerCardXYRotation(playerIndex)
+	local x = ({57, 57, 573, 589, 539})[playerIndex]
+	local y = ({777, 0, 0, 315, 816})[playerIndex]
+	return x,y,PLAYERSROTATION[playerIndex]
+end
+
+function nonPlayerCardXYRotation(cardIndex)
+	local x = 60
+	local y = 160 + 96 * cardIndex
+	local rotation = 70
+	return x,y,rotation
+end
+
+function setPlayerBirds(playerIndex, birds)
+	players[playerIndex].birds = birds
+	playersHUDBirds[playerIndex].text=players[playerIndex].birds
+end
+
+function setPlayerFish(playerIndex, fish)
+	players[playerIndex].fish = fish
+	playersHUDFish[playerIndex].text=players[playerIndex].fish
+end
+
+function killPlayer(playerIndex)
+	players[playerIndex].dead=true
+	AudioUtil.playSE("Die.wav")
+	timer.performWithDelay(1200,function() AudioUtil.playBGM("sound_inGame.mp3") end)
+	-- Change the only icon position, since only only one player can be dead per turn
+	deadIcon.x = ({57, 57, 573, 589, 539})[playerIndex]
+	deadIcon.y = ({777, 0, 0, 315, 816})[playerIndex]
+	deadIcon.rotation=PLAYERSROTATION[playerIndex]
+	transition.to(deadIcon, { time=400, alpha=1, transition=easing.inOutQuad})
+end
+
+function revivePlayer(playerIndex)
+	players[playerIndex].dead=false
+	transition.to(deadIcon, { time=400, alpha=0, transition=easing.inOutQuad})
+end
+
+-- Return the player Y based in the boardPosition
+function playerIconY(playerIndex)
+	-- Defines the first and last positions
+	local firstY=670
+	local lastY=270
+	local boardPosition = players[playerIndex].boardPosition
+	if boardPosition>DISTANCEGOAL then boardPosition=DISTANCEGOAL end -- precaution
+	return firstY-(firstY-lastY)*(boardPosition-1)/(DISTANCEGOAL-1)
+end
+
+--------------------------------------------------
+--- Step/Bar Messages
+--------------------------------------------------
+
+-- If turn isn't nil, then show the turn message. 
+-- If playerWinner isn't nil, then show the victory message and don't fade. 
+-- onComplete is the function trigger at end of step Message.
+function showStepMessage(turn,playerWinner,onComplete) 
+	local duration=2300
+	local selectedStep = step
+	if selectedStep==STEP_KILLER then selectedStep=STEP_ACTION end
+	local mainText=""
+	local subText=""
+	if playerWinner then
+		mainText="VITÓRIA!!!"
+		subText="Jogador "..COLORNAMES[playerWinner].." superou os desafios e chegou a cidade grande!"
+	elseif turn then
+		mainText="Rodada "..turn
+	else
+		mainText=({
+			[STEP_SELECTCARD]="I. Fase de Seleção",
+			[STEP_ACTION]="II. Fase de Execução",
+			[STEP_MOVE]="III. Fase de Movimentação"
+		})[selectedStep]
+		subText=({
+			[STEP_SELECTCARD]="Cada jogador seleciona uma carta que será usada nesta rodada.",
+			[STEP_ACTION]="Cada jogador executa a função de sua carta.",
+			[STEP_MOVE]="Cada jogador opta por utilizar ou não seus recursos para se movimentar."
+		})[selectedStep]
+	end
+	mainMessageText.text=mainText
+	subMessageText.text=subText
+	messageLayer.alpha=0
+	transition.to(messageLayer,{time=400, alpha=1, transition=easing.inOutQuad})
+	transition.to(blackBlock, {time=400, alpha=0.9, transition=easing.inOutQuad })
+	if playerWinner then return end
+	transition.to(blackBlock, {delay=(duration-400), time=400, alpha=0, transition=easing.inOutQuad })
+	transition.to(messageLayer,{delay=(duration-400), time=400, alpha=0, transition=easing.inOutQuad, onComplete=onComplete})
+	setTouchWaitTime(duration)
+end
+
+function refreshmainBarText()
 	local text="Jogador "..COLORNAMES[playerTurn]..": "
 	
 	local textAction = {
@@ -418,102 +567,130 @@ function refreshMainHUDText()
 		[STEP_MOVE]="Andar?",
 		[STEP_NEWORDER]="Escolha o primeiro jogador do próximo turno."
 	}
-	local text=text..textStep[step]
-	mainHUDText.text=text
+	if stolenPlayer>0 then
+		text=text.." Alvo escolhido foi o Jogador "..COLORNAMES[stolenPlayer]..": "
+	else
+		text=text..textStep[step]
+	end
+	mainBarText.text=text
 	-- Displays the right bar
 	for i = 1, playerCount do
-		mainHUDBars[i].isVisible = playerTurn==i
+		mainBars[i].isVisible = playerTurn==i
 	end
 end
 
 --------------------------------------------------
---- Functions that change visual/player things
+--- AI
 --------------------------------------------------
 
--- Highlight the player. When param<1 or there is no param = No Highlight 
--- Also, refreshes the mainHUDText
-function highlightPlayer(playerIndex)
-	-- Only refreshes the mainHUDText now.
-	refreshMainHUDText()
-end
-
-function removePlayerCard(playerIndex)
-	local oldCard = players[playerIndex].card
-	players[playerIndex].card=0
-	--TODO animation
-	if oldCard>0 then
-		local x, y, rotation = nonPlayerCardXYRotation(oldCard) 
-		transition.to(cards[oldCard], {delay=0, time=400, x=x, y=y, rotation=rotation, transition=easing.inOutQuad })
-		setTouchWaitTime(500)
-	end
-end
-
-function playerCardXYRotation(playerIndex)
-	local x = ({57, 57, 573, 589, 539})[playerIndex]
-	local y = ({777, 0, 0, 315, 816})[playerIndex]
-	return x,y,PLAYERSROTATION[playerIndex]
-end
-
-function nonPlayerCardXYRotation(cardIndex)
-	local x = 50
-	local y = 160 + 96 * cardIndex
-	local rotation = 70
-	return x,y,rotation
-end
-
-function setPlayerBirds(playerIndex, birds)
-	players[playerIndex].birds = birds
-	playersHUDBirds[playerIndex].text=players[playerIndex].birds
-	--TODO animation
-end
-
-function setPlayerFish(playerIndex, fish)
-	players[playerIndex].fish = fish
-	playersHUDFish[playerIndex].text=players[playerIndex].fish
-	--TODO animation
-end
-
-function killPlayer(playerIndex)
-	players[playerIndex].dead=true
-	AudioUtil.playSE("Die")
-	timer.performWithDelay(1200,function() AudioUtil.playBGM("sound_inGame.mp3") end)
-	setTouchWaitTime(3500)
-	-- Change the only icon position, since only only one player can be dead per turn
-	deadIcon.x = ({57, 57, 573, 589, 539})[playerIndex]
-	deadIcon.y = ({777, 0, 0, 315, 816})[playerIndex]
-	deadIcon.rotation=PLAYERSROTATION[playerIndex]
-	transition.to(deadIcon, { time=400, alpha=1, transition=easing.inOutQuad})
-	--TODO animation
-end
-
-function revivePlayer(playerIndex)
-	players[playerIndex].dead=false
-	transition.to(deadIcon, { time=400, alpha=0, transition=easing.inOutQuad})
-	--TODO animation
-end
-
--- Return the player Y based in the boardPosition
-function playerIconY(playerIndex)
-	-- Defines the first and last positions
-	local firstY=720
-	local lastY=320
-	local boardPosition = players[playerIndex].boardPosition
-	if boardPosition>DISTANCEGOAL then boardPosition=DISTANCEGOAL end -- precaution
-	return firstY-(firstY-lastY)*(boardPosition-1)/(DISTANCEGOAL-1)
+function aiCommand(dummy,delay) -- Dummy is for problems when calling using closures.
+	delay=delay and delay or 0
+	local func = function()
+		if not players[playerTurn].isBot then return end
+		commands={}
+		if step == STEP_SELECTCARD then
+			if decisionTime then -- If the card is selected, just confirm
+				confirmTouch(nil,true)
+			else
+				-- Get the player who has the best points
+				local bestPoints = 0
+				for i = 1, playerCount do 
+					if i~=playerTurn and players[i]:getPoints()>bestPoints then
+						bestPoints=players[i]:getPoints()
+					end 
+				end
+				for _,cardIndex in ipairs({CARTA_CACADOR,CARTA_PESCADOR,CARTA_PATINADOR,CARTA_DIABO,CARTA_CORVO,CARTA_LADRAO}) do
+					local alreadySelected = false
+					for playerIndex = 1, playerCount do
+						if players[playerIndex].card==cardIndex then alreadySelected=true end
+					end
+					if not alreadySelected then 
+						local badEffectCard = cardIndex==CARTA_DIABO or cardIndex==CARTA_CORVO or cardIndex==CARTA_LADRAO
+						local score = 2
+						if badEffectCard then
+							if (bestPoints-players[playerTurn]:getPoints())>1 then
+								score=(bestPoints-players[playerTurn]:getPoints())*2-2
+							else
+								score=1
+							end
+						elseif cardIndex==CARTA_PATINADOR then 
+							score=players[playerTurn]:getPoints()+1
+							if score>3 then score=score*2 end
+						elseif cardIndex==CARTA_PESCADOR then 
+							score=players[playerTurn].birds*3
+							if score<1 then score=1 end
+						end
+						commands[cardIndex]=score
+					end 
+				end
+				commands = Util.cutLowValues(commands,4,0)
+				local selectedCommand = Util.selectKeyFromValuePercent(commands)
+				cardTouch(nil, selectedCommand)
+			end
+		elseif step == STEP_KILLER then
+			for i = 1, playerCount do 
+				if i~=playerTurn then
+					local score = (players[i]:getPoints()+players[i].boardPosition)
+					commands[i]=score
+				end 
+			end
+			commands = Util.cutLowValues(commands,3,0)
+			local selectedCommand = Util.selectKeyFromValuePercent(commands)
+			playerTouch(nil, selectedCommand)
+		elseif step == STEP_ACTION then
+			print("ai STEP_ACTION")
+			for i = 1, playerCount do 
+				if i~=playerTurn then
+					local score = players[i]:getPoints()
+					commands[i]=score*2
+				end 
+			end
+			commands = Util.cutLowValues(commands,4,1)
+			local selectedCommand = Util.selectKeyFromValuePercent(commands)
+			print("selectedCommand="..selectedCommand)
+			playerTouch(nil, selectedCommand)
+		elseif step == STEP_MOVE then
+			print("ai STEP_MOVE")
+			local score = players[playerTurn]:getPoints()
+			commands[1]=score -- confirm
+			commands[2]=2 -- cancel
+			commands = Util.cutLowValues(commands,3,0)
+			local selectedCommand = Util.selectKeyFromValuePercent(commands)
+			print("selectedCommand="..selectedCommand)
+			if selectedCommand==1 then
+				confirmTouch(nil,true)
+			else
+				cancelTouch(nil,true)
+			end
+		elseif step == STEP_NEWORDER then
+			local selectedCommand = playerTurn==1 and playerCount or playerTurn-1
+			playerTouch(nil, selectedCommand)
+		end
+	end	
+	timer.performWithDelay(delay,func)
 end
 
 --------------------------------------------------
 --- Touch listeners
 --------------------------------------------------
+-- If indexTouchByBot~=nil then is a bot command.
 
-function cardTouch (event)
-	local cardIndex = 0
-	if (event.phase == "ended") then
-		if not touchReady() then return true end
-		for i = 1, #cards do
-			if (event.target == cards[i]) then
-				cardIndex=i
-				break
+function validTouch(event, touchByBot)
+	return touchReady() and gameOccurring and ((event and event.phase == "ended" and not players[playerTurn].isBot) or touchByBot)
+end
+
+function cardTouch (event,indexTouchByBot)
+	local cardIndex=0
+	if validTouch(event, indexTouchByBot) then
+		print("validTouch indexTouchByBot="..tostring(indexTouchByBot))
+		if indexTouchByBot then
+			cardIndex=indexTouchByBot
+		else
+			for i = 1, #cards do
+				if (event.target == cards[i]) then
+					cardIndex=i
+					break
+				end
 			end
 		end
 	end
@@ -527,44 +704,52 @@ function cardTouch (event)
 			end
 			if not alreadySelected then
 				selectedCard=cardIndex
-				for i =1, gameLayer.numChildren do -- Get the index and store at selectedCardLayerIndex
-					if cards[selectedCard] == gameLayer[i] then
+				for i =1, cardsLayer.numChildren do -- Get the index and store at selectedCardLayerIndex
+					if cards[selectedCard] == cardsLayer[i] then
 						selectedCardLayerIndex = i
 						break
 					end
 				end
-				setTouchWaitTime(2000)
+				local delay=2000
+				setTouchWaitTime(delay)
 				activateDecisionTime()
+				aiCommand(nil,delay+2)
 			end
 			return true
 		end
 	end
 end
 
-function playerTouch (event)
+function playerTouch (event,indexTouchByBot)
 	local playerIndex = 0
-	if (event.phase == "ended") then
-		if not touchReady() then return true end
-		for i = 1, playerCount do
-			if (event.target == playersHUD[i]) then
-				playerIndex = i
-				break
+	if validTouch(event, indexTouchByBot) then
+		if indexTouchByBot then
+			playerIndex=indexTouchByBot
+		else
+			for i = 1, playerCount do
+				if (event.target == playersHUD[i]) then
+					playerIndex = i
+					break
+				end
 			end
 		end
 	end
 	if playerIndex ~= 0 and not decisionTime then
+		if not touchReady() then return true end
 		-- Selected player option at each step
 		if step == STEP_KILLER then
 			if playerIndex~=playerTurn then  -- Suicide isn't allowed
 				killPlayer(playerIndex)
 				-- Next step
 				firstPlayer=playerTurn
+				step = STEP_ACTION
 				initializeActionTurn()
 			end
 			return true
 		elseif step == STEP_ACTION then
 			if playerIndex~=playerTurn then -- Clicked at the target
 				if players[playerTurn].card==CARTA_LADRAO then
+					stolenPlayer=playerIndex
 					local stolen = players[playerIndex]:getHalfBirdsAndFish()
 					local stolenBirds=stolen[1]
 					local stolenFish=stolen[2]
@@ -572,10 +757,10 @@ function playerTouch (event)
 					setPlayerBirds(playerIndex,players[playerIndex].birds-stolenBirds)
 					setPlayerFish(playerTurn,players[playerTurn].fish+stolenFish)
 					setPlayerBirds(playerTurn,players[playerTurn].birds+stolenBirds)
-					-- TODO Maybe this will mess with the animation
-					-- TODO Animation
-					nextAction()
+					highlightPlayer(playerTurn)
+					timer.performWithDelay(4000,function() nextAction() end)
 				elseif players[playerTurn].card==CARTA_CORVO then
+					stolenPlayer=playerIndex
 					local stolenPoints = 0
 					if players[playerIndex].fish>0 then
 						stolenPoints=2
@@ -587,7 +772,8 @@ function playerTouch (event)
 					end
 					players[playerTurn].boardPosition = players[playerTurn].boardPosition+stolenPoints
 					movePlayerEffects(playerTurn,stolenPoints)
-					nextAction()
+					highlightPlayer(playerTurn)
+					timer.performWithDelay(4000,function() nextAction() end)
 				end
 			end
 			return true
@@ -601,29 +787,32 @@ function playerTouch (event)
 	end
 end
 
-function confirmTouch (event)
-	if (event.phase == "ended") and decisionTime then
-		if not touchReady() then return true end
+function confirmTouch (event,touchByBot)
+	if validTouch(event, touchByBot) and decisionTime then
 		if step == STEP_SELECTCARD then
+			local delay=1000
 			players[playerTurn].card=selectedCard
-			setTouchWaitTime(1000)
+			setTouchWaitTime(delay)
 			deactivateDecisionTime(playerTurn)
 			if nextPlayerTurn() then
 				highlightPlayer(playerTurn)
+				aiCommand(nil,delay+2)
 			else
 				killChoice()
 			end
 		elseif step == STEP_MOVE then
+			local playerTurnNow=playerTurn -- Print purposes
+			print("playerTurnNow="..playerTurnNow.." players[playerTurnNow]:getPoints()="..players[playerTurnNow]:getPoints().." players[playerTurnNow].boardPosition="..players[playerTurnNow].boardPosition)
 			movePlayerConsumingResources(playerTurn)
+			print("2 playerTurnNow="..playerTurnNow.." players[playerTurnNow]:getPoints()="..players[playerTurnNow]:getPoints().." players[playerTurnNow].boardPosition="..players[playerTurnNow].boardPosition)
 			nextMove()
 		end		
 		return true
 	end
 end
 
-function cancelTouch (event)
-	if (event.phase == "ended") and decisionTime then
-		if not touchReady() then return true end
+function cancelTouch (event,touchByBot)
+	if validTouch(event, touchByBot) and decisionTime then
 		if step == STEP_SELECTCARD then
 			setTouchWaitTime(1000)
 			deactivateDecisionTime()

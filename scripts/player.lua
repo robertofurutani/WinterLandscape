@@ -1,10 +1,11 @@
 Player = {}
 Player.__index = Player
 
-function Player.create(index)
+function Player.create(index,isBot)
     local object = {}
     setmetatable(object,Player)
     object.index = index 
+    object.isBot=isBot and true or false
     object.card=0
 	object.birds=0
 	object.fish=0
