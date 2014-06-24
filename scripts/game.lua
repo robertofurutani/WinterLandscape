@@ -13,8 +13,6 @@ local CARTA_DIABO=4
 local CARTA_CORVO=5
 local CARTA_LADRAO=6
 
-local FONT_SIZE=32
-
 local PLAYERSROTATION = {45,135,225,270,315}
 local PLAYERSTEXTCOLOR = {{0.9, 0.9, 0.5},{0.6, 0.6, 1},{1, 0.4, 0.8},{1, 0.6, 0.6},{0.8, 1, 0.6}}
 local CARDANIMATIONNAMES = ({
@@ -26,7 +24,7 @@ local CARDANIMATIONNAMES = ({
 	[CARTA_LADRAO]="cartaLadraoRotate.png",
 })
 local COLORNAMES = {"Amarelo","Azul","Rosa","Vermelho", "Verde"}
-local FONT = "Garamond Premr Pro"
+local FONT = "Garamond Premier Pro Bold"
 
 -- Layers
 local boardLayer = nil
@@ -90,14 +88,14 @@ function initializeGame(playersNumber, functionAfterFade)
 	playersLayer=display.newGroup()
 	cardsLayer=display.newGroup()
 	hudLayer=display.newGroup()
+	barLayer=display.newGroup()
 	blockLayer=display.newGroup() -- All below this layer cannot be visible when the black block is active
 	featuredLayer=display.newGroup() -- A visible layer when black block is active
-	barLayer=display.newGroup()
 	messageLayer=display.newGroup()
 	
 	layers = {boardLayer,playersLayer,cardsLayer,hudLayer,blockLayer,featuredLayer,barLayer,messageLayer}
 	
-	board = display.newImageRect( boardLayer,IMGDIR.."tabuleiro.png", 760, 1024)
+	board = display.newImageRect( boardLayer,IMGDIR.."tabuleiro.png", 769, 1024)
 	
 	-- Cards image
 	local cardCount=1
@@ -128,25 +126,27 @@ function initializeGame(playersNumber, functionAfterFade)
 	deadIcon = display.newImageRect( hudLayer, IMGDIR.."lapide.png", 58, 85 )
 	deadIcon.alpha = 0
 	
+	mainBarNeutra = display.newImageRect( barLayer, IMGDIR.."barraNeutra.png", 760, 1024 ) --Deixa a barra cinza até necessitar de um comando
+
 	for i = 1, playerCount do 
 		-- Player HUD
 		local playersHUDPath = ({"playerAmareloHud.png","playerAzulHud.png","playerRosaHud.png","playerVermelhoHud.png","playerVerdeHud.png"})[i]
 		playersHUD[i] = display.newImageRect( hudLayer, IMGDIR..playersHUDPath, ({208, 239, 207, 91, 241})[i], ({247, 209, 240, 394, 208})[i])
-		local hudFinalX = ({37, 37, 553, 669, 519})[i]
+		local hudFinalX = ({37, 37, 561, 678, 528})[i]
 		local hudFinalY = ({777, 0, 0, 315, 816})[i]
 		local hudWidth = playersHUD[i].width
 		local hudHeight = playersHUD[i].height
+
 		-- Initial position before the HUD appears at screen
 		playersHUD[i].x = ({-hudWidth, -hudWidth, hudWidth, hudWidth, hudWidth})[i] + hudFinalX
 		playersHUD[i].y = ({hudHeight, -hudHeight, -hudHeight, 0, hudHeight})[i] + hudFinalY
-	    transition.to(playersHUD[i], {delay=1000+400*i, time=2000, x=hudFinalX, y=hudFinalY, transition=easing.inOutQuad})
+	    transition.to(playersHUD[i], {delay=500+400*i, time=3000, x=hudFinalX, y=hudFinalY, transition=easing.inOutQuad})
 		playersHUD[i]:addEventListener( "touch", playerTouch)
 		
 		-- Birds counter
-		playersHUDBirds[i] = display.newText({parent=hudLayer, text="B",font=FONT, fontSize=FONT_SIZE})
-		playersHUDBirds[i].x = ({130, 156, 671, 700, 634})[i]
-		playersHUDBirds[i].y = ({900, 87, 118, 532, 941})[i]
-
+		playersHUDBirds[i] = display.newText({parent=hudLayer, text="0",font=FONT, fontSize=18})
+		playersHUDBirds[i].x = ({110, 135, 690, 715, 670})[i]
+		playersHUDBirds[i].y = ({925, 75, 97, 525, 948})[i]
 		playersHUDBirds[i]:setFillColor(PLAYERSTEXTCOLOR[i][1],PLAYERSTEXTCOLOR[i][2],PLAYERSTEXTCOLOR[i][3])
 		playersHUDBirds[i].anchorX = 0.5
 		playersHUDBirds[i].rotation = PLAYERSROTATION[i]
@@ -154,9 +154,9 @@ function initializeGame(playersNumber, functionAfterFade)
 		transition.to ( playersHUDBirds[i], { delay=5000, time=2000, alpha=1, transition=easing.inOutQuad})
 		
 		-- Fish counter
-		playersHUDFish[i] = display.newText({parent=hudLayer, text="F",font=FONT, fontSize=FONT_SIZE})
-		playersHUDFish[i].x = ({160, 117, 637, 700, 682})[i]
-		playersHUDFish[i].y = ({945, 117, 75, 478, 907})[i]
+		playersHUDFish[i] = display.newText({parent=hudLayer, text="0",font=FONT, fontSize=18})
+		playersHUDFish[i].x = ({135, 105, 666, 715, 703})[i]
+		playersHUDFish[i].y = ({958, 100, 65, 480, 925})[i]
 		playersHUDFish[i]:setFillColor(PLAYERSTEXTCOLOR[i][1],PLAYERSTEXTCOLOR[i][2],PLAYERSTEXTCOLOR[i][3])
 		playersHUDFish[i].anchorX = 0.5
 		playersHUDFish[i].rotation = PLAYERSROTATION[i]
@@ -165,14 +165,14 @@ function initializeGame(playersNumber, functionAfterFade)
 		
 		-- Players Icons
 		local playersIconsPath = ({"playerAmarelo.png","playerAzul.png","playerRosa.png","playerVermelho.png","playerVerde.png"})[i] 
-		playersIcons[i] = display.newImageRect( playersLayer, IMGDIR..playersIconsPath, 54, 98 )
-		playersIcons[i].x = ({340, 380, 420, 460, 500})[i]
+		playersIcons[i] = display.newImageRect( playersLayer, IMGDIR..playersIconsPath, 45, 76 )
+		playersIcons[i].x = ({300, 340, 380, 420, 460})[i]
 		playersIcons[i].y = playerIconY(i)
 		
 		-- Draw all bar at the same positions, but only the right one will be visible
 		local mainBarsPaths = {"barraYellow.png","barraBlue.png","barraPink.png","barraRed.png","barraGreen.png"}
 		mainBars[i] = display.newImageRect( barLayer, IMGDIR..mainBarsPaths[i], 760, 1024 )
-		mainBars.isVisible = false
+		mainBars[i].isVisible = false
 	end
 	
 	-- Black block used at decision time
@@ -181,7 +181,7 @@ function initializeGame(playersNumber, functionAfterFade)
 	blackBlock.alpha=0
 	
 	-- Main HUD text
-	mainBarText = display.newText({parent=barLayer, x=18, y=display.viewableContentHeight/2, text="",font=FONT, fontSize=32})
+	mainBarText = display.newText({parent=barLayer, x=16, y=display.viewableContentHeight/2, text="",font=FONT, fontSize=18})
 	mainBarText.anchorX = 0.5
 	mainBarText.anchorY = 0.5
 	mainBarText.rotation = 90	
@@ -207,7 +207,7 @@ function initializeGame(playersNumber, functionAfterFade)
 	decisionBox = DecisionBox.create(PLAYERSROTATION,COLORNAMES,PLAYERSTEXTCOLOR,decisionBoxLayer,confirmButton,cancelButton,titleText,descriptionText)	
 	
 	-- Fade all layers and execute functionAfterFade after fade
-	local delay=3000
+	local delay=4000
 	for i=1, #layers do
 		transFade( layers[i], 0, delay)
 	end
@@ -278,7 +278,7 @@ function nextTurn()
 	playerTurn=firstPlayer
 	highlightPlayer(playerTurn)
 	local after = function() -- Remove card, revive everyone and show step text
-		local delay=500
+		local delay=400
 		setTouchWaitTime(delay)
 		for i = 1, playerCount do
 			if players[i].card>0 then removePlayerCard(i) end
@@ -578,7 +578,7 @@ function refreshmainBarText()
 	mainBarText.text=text
 	-- Displays the right bar
 	for i = 1, playerCount do
-		mainBars[i].isVisible = playerTurn==i
+		mainBars[i].isVisible = playerTurn == i
 	end
 end
 

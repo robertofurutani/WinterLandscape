@@ -39,11 +39,26 @@ function mostrarIntro()
 	mostrarMenu()
 end
 
-function mostrarMenu()
+function mostrarMenu(event)
+
+	--local target = event.target
+
+	transition.to(bg,{time=800, alpha=1, transition=easing.InOutQuad})
+	transition.to(botoesLayers,{time=800, alpha=1, transition=easing.InOutQuad})
+
+	transition.to(bgCredito,{time=800, alpha=0, transition=easing.InOutQuad})
+	transition.to(bgComoJogar,{time=800, alpha=0, transition=easing.InOutQuad})
+
+	--target:removeEventListener( "tap", mostrarMenu)
+
+	return true
+
+	--[[
 	bgCredito.alpha = 0
 	bgComoJogar.alpha = 0
 	bg.alpha = 1
 	botoesLayers.alpha = 1
+	]]
 end
 
 function inicializar()
@@ -53,19 +68,19 @@ function inicializar()
 	
 	local baseMenu = display.newImageRect( bg,IMGDIR.."baseMenu.png", 768, 1024)
 
-	transFade( background, 5000, 500)
+	transFade( background, 500, 5000)
 
-	transFade( baseMenu, 2000, 0)
+	transFade( baseMenu, 800, 1000)
 
 	--Botoes e suas transições
 	local botao1p = display.newImageRect( botoesLayers, IMGDIR.."botao1p.png", 55, 53 )
-	botao1p.x = 310
+	botao1p.x = 314
 	botao1p.y = 625
 	transFade (botao1p, 800, 2000)
 	botao1p.id = "botao1p"
 
 	local botao2p = display.newImageRect( botoesLayers, IMGDIR.."botao2p.png", 55, 53 )
-	botao2p.x = 310
+	botao2p.x = 314
 	botao2p.y = 675
 	transFade (botao2p, 1000, 2000)
 	botao2p.id = "botao2p"
@@ -150,35 +165,22 @@ function tapBotaoCredito ()
 end
 
 function esconderMenu()
-	bg.alpha = 0
-	botoesLayers.alpha = 0
-end
-
-function mostrarComoJogar()
-    bgComoJogar.alpha = 1
-	local imgComoJogar = display.newImageRect( bgComoJogar,IMGDIR.."comojogar.png", 768, 1024)
-	local btVoltar = display.newImageRect(bgComoJogar, IMGDIR.."voltar.jpg", 200, 100 )
-	btVoltar.x = 300
-	btVoltar.y = 900
-	
-	btVoltar.id = "btVoltar"
-	transFade( imgComoJogar, 0, 500, esconderMenu)
-	transFade( btVoltar, 0, 500)
-	btVoltar:addEventListener( "touch", mostrarMenu)
+	transition.to(bg,{time=800, alpha=0, transition=easing.InOutQuad})
+	transition.to(botoesLayers,{time=800, alpha=0, transition=easing.InOutQuad})
 end
 
 function mostrarCreditos()
-	bgCredito.alpha = 1
+	transition.to(bgCredito,{time=800, alpha=1, transition=easing.InOutQuad})
 	local imgCreditos = display.newImageRect( bgCredito,IMGDIR.."creditos.png",  768, 1024)
-	local btVoltar = display.newImageRect(bgCredito, IMGDIR.."voltar.jpg", 200, 100 )
-	btVoltar.x = 300
-	btVoltar.y = 900
-	
-	btVoltar.id = "btVoltar"
-	transFade( imgCreditos, 0, 500, esconderMenu)
-	transFade( btVoltar, 0, 500)
-	
-	btVoltar:addEventListener( "touch", mostrarMenu)
+
+	imgCreditos:addEventListener( "tap", mostrarMenu)
+end
+
+function mostrarComoJogar()
+	transition.to(bgComoJogar,{time=800, alpha=1, transition=easing.InOutQuad})
+	local imgComo = display.newImageRect( bgComoJogar, IMGDIR.."como.png",  768, 1024)
+
+	imgComo:addEventListener( "tap", mostrarMenu)
 end
 
 
