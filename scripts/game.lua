@@ -13,6 +13,8 @@ local CARTA_DIABO=4
 local CARTA_CORVO=5
 local CARTA_LADRAO=6
 
+local FONT_SIZE=32
+
 local PLAYERSROTATION = {45,135,225,270,315}
 local PLAYERSTEXTCOLOR = {{0.9, 0.9, 0.5},{0.6, 0.6, 1},{1, 0.4, 0.8},{1, 0.6, 0.6},{0.8, 1, 0.6}}
 local CARDANIMATIONNAMES = ({
@@ -141,9 +143,10 @@ function initializeGame(playersNumber, functionAfterFade)
 		playersHUD[i]:addEventListener( "touch", playerTouch)
 		
 		-- Birds counter
-		playersHUDBirds[i] = display.newText({parent=hudLayer, text="0",font=FONT, fontSize=22})
-		playersHUDBirds[i].x = ({57, 57, 573, 589, 539})[i]
-		playersHUDBirds[i].y = ({777, 0, 0, 315, 816})[i]
+		playersHUDBirds[i] = display.newText({parent=hudLayer, text="B",font=FONT, fontSize=FONT_SIZE})
+		playersHUDBirds[i].x = ({130, 156, 671, 700, 634})[i]
+		playersHUDBirds[i].y = ({900, 87, 118, 532, 941})[i]
+
 		playersHUDBirds[i]:setFillColor(PLAYERSTEXTCOLOR[i][1],PLAYERSTEXTCOLOR[i][2],PLAYERSTEXTCOLOR[i][3])
 		playersHUDBirds[i].anchorX = 0.5
 		playersHUDBirds[i].rotation = PLAYERSROTATION[i]
@@ -151,9 +154,9 @@ function initializeGame(playersNumber, functionAfterFade)
 		transition.to ( playersHUDBirds[i], { delay=5000, time=2000, alpha=1, transition=easing.inOutQuad})
 		
 		-- Fish counter
-		playersHUDFish[i] = display.newText({parent=hudLayer, text="0",font=FONT, fontSize=22})
-		playersHUDFish[i].x = ({67, 67, 583, 599, 549})[i]
-		playersHUDFish[i].y = ({777, 0, 0, 315, 816})[i]
+		playersHUDFish[i] = display.newText({parent=hudLayer, text="F",font=FONT, fontSize=FONT_SIZE})
+		playersHUDFish[i].x = ({160, 117, 637, 700, 682})[i]
+		playersHUDFish[i].y = ({945, 117, 75, 478, 907})[i]
 		playersHUDFish[i]:setFillColor(PLAYERSTEXTCOLOR[i][1],PLAYERSTEXTCOLOR[i][2],PLAYERSTEXTCOLOR[i][3])
 		playersHUDFish[i].anchorX = 0.5
 		playersHUDFish[i].rotation = PLAYERSROTATION[i]
@@ -275,7 +278,7 @@ function nextTurn()
 	playerTurn=firstPlayer
 	highlightPlayer(playerTurn)
 	local after = function() -- Remove card, revive everyone and show step text
-		local delay=400
+		local delay=500
 		setTouchWaitTime(delay)
 		for i = 1, playerCount do
 			if players[i].card>0 then removePlayerCard(i) end
