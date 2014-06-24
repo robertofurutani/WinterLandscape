@@ -10,7 +10,7 @@ local seTable={}
 -- If the SE is new, add at seTable for future use
 function AudioUtil.playSE(nameWithExtension)
 	if seTable[nameWithExtension]==nil then seTable[nameWithExtension] = audio.loadSound(SEDIR..nameWithExtension) end
-	--audio.play(seTable[nameWithExtension])
+	   audio.play(seTable[nameWithExtension])
 end
 
 -- Stops all the sound and plays the file name. Default plays at infinite looping
@@ -22,7 +22,7 @@ function AudioUtil.playBGM(nameIncludingExtension,loops)
 	end
 	audio.setVolume(1.0,{channel=0})
 	lastMusic=audio.loadStream(BGMDIR..nameIncludingExtension)
-	--audio.play(lastMusic,{loops=loops})
+	audio.play(lastMusic,{loops=loops})
 end
 
 return AudioUtil
