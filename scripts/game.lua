@@ -13,7 +13,9 @@ local CARTA_DIABO=4
 local CARTA_CORVO=5
 local CARTA_LADRAO=6
 
-local PLAYERSROTATION = {45,135,225,270,315}
+local FONT_SIZE=32
+
+local PLAYERSROTATION = {49,138,230,270,320}
 local PLAYERSTEXTCOLOR = {{0.9, 0.9, 0.5},{0.6, 0.6, 1},{1, 0.4, 0.8},{1, 0.6, 0.6},{0.8, 1, 0.6}}
 local CARDANIMATIONNAMES = ({
 	[CARTA_CACADOR]="cartaCacadorRotate.png",
@@ -462,9 +464,11 @@ function removePlayerCard(playerIndex)
 	end
 end
 
+
 function playerCardXYRotation(playerIndex)
-	local x = ({57, 57, 573, 589, 539})[playerIndex]
-	local y = ({777, 0, 0, 315, 816})[playerIndex]
+	local x = ({200, 200, 580, 630, 600})[playerIndex]
+
+	local y = ({860, 180, 160, 500, 860})[playerIndex]
 	return x,y,PLAYERSROTATION[playerIndex]
 end
 
